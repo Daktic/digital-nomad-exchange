@@ -15,7 +15,7 @@ pub mod digital_nomad_exchange {
         // Initialize the liquidity pool account
         liquidity_pool.token_a = ctx.accounts.token_a.key();
         liquidity_pool.token_b = ctx.accounts.token_b.key();
-        liquidity_pool.lp_mint = ctx.accounts.lp_mint.key();
+        liquidity_pool.lp_token = ctx.accounts.lp_token.key();
         liquidity_pool.owner = ctx.accounts.user.key();
         Ok(())
     }
@@ -30,7 +30,7 @@ pub mod digital_nomad_exchange {
 
         // Mint LP tokens to user
         let cpi_accounts = MintTo {
-            mint: ctx.accounts.lp_mint.to_account_info(),
+            mint: ctx.accounts.lp_token.to_account_info(),
             to: ctx.accounts.user_lp_token_account.to_account_info(),
             authority: ctx.accounts.liquidity_pool.to_account_info(),
         };
@@ -49,7 +49,7 @@ pub mod digital_nomad_exchange {
 pub struct LiquidityPool {
     pub token_a: Pubkey,
     pub token_b: Pubkey,
-    pub lp_mint: Pubkey,
+    pub lp_token: Pubkey,
     pub owner: Pubkey,
 }
 
@@ -61,7 +61,7 @@ pub struct CreateLiquidityPool<'info> {
     pub liquidity_pool: Account<'info, LiquidityPool>,
     pub token_a: Account<'info, TokenAccount>,
     pub token_b: Account<'info, TokenAccount>,
-    pub lp_mint: Account<'info, Mint>,
+    pub lp_token: Account<'info, Mint>,
     #[account(mut)]
     pub user: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -78,7 +78,7 @@ pub struct AddLiquidity<'info> {
     #[account(mut)]
     pub token_b: Account<'info, TokenAccount>,
     #[account(mut)]
-    pub lp_mint: Account<'info, Mint>,
+    pub lp_token: Account<'info, Mint>,
     #[account(mut)]
     pub user_lp_token_account: Account<'info, TokenAccount>,
     #[account(mut)]
