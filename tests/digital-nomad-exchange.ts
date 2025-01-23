@@ -1,52 +1,85 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { Keypair } from "@solana/web3.js";
 import { DigitalNomadExchange } from "../target/types/digital_nomad_exchange";
-import { createMint, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import * as bs58 from "bs58";
+import {createMint, getOrCreateAssociatedTokenAccount} from "@solana/spl-token";
 
 describe("digital-nomad-exchange", () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.AnchorProvider.env());
-
-  const program = anchor.workspace.DigitalNomadExchange as Program<DigitalNomadExchange>;
   const provider = anchor.AnchorProvider.env();
-  const connection = provider.connection;
-  const signer = Keypair.fromSecretKey(
-      bs58.decode(
-          "588FU4PktJWfGfxtzpAAXywSNt74AvtroVzGfKkVN1LwRuvHwKGr851uH8czM5qm4iqLbs1kKoMKtMJG4ATR7Ld2"
-      )
-  );
+  anchor.setProvider(provider);
+  const program = anchor.workspace.DigitalNomadExchange as Program<DigitalNomadExchange>;
 
-  let mintA: anchor.web3.PublicKey;
-  let mintB: anchor.web3.PublicKey;
-  let userTokenAccountA: anchor.web3.PublicKey;
-  let userTokenAccountB: anchor.web3.PublicKey;
+  it("Is initialized!", async () => {
 
-  before(async () => {
-    // Create mint A
-    mintA = await createMint(
-        connection,
-        signer,
-        signer.publicKey,
+    const user_account = anchor.web3.Keypair.generate();
+
+    const airdrop_tx = await provider.connection.requestAirdrop(user_account.publicKey, 1000000000);
+      // Make sure we wait for confirmation
+      await provider.connection.confirmTransaction({
+          signature: airdrop_tx,
+          ...(await provider.connection.getLatestBlockhash("finalized"))
+      });
+
+    //   Create mint accounts to create tokens
+    const tokenA = await createMint(
+        provider.connection,
+        user_account,
+        user_account.publicKey,
         null,
-        9
-    );
+        9,
+        );
 
-    // Create mint B
-    mintB = await createMint(
-        connection,
-        signer,
-        signer.publicKey,
+    const tokenB = await createMint(
+        provider.connection,
+        user_account,
+        user_account.publicKey,
         null,
         9,
     );
-  });
 
+    // Create associated token accounts for the user
+    const userTokenAccountA = await getOrCreateAssociatedTokenAccount(
+        provider.connection,
+        user_account,
+        tokenA,
+        user_account.publicKey
+    );
+    const userTokenAccountB = await getOrCreateAssociatedTokenAccount(
+        provider.connection,
+        user_account,
+        tokenB,
+        user_account.publicKey
+    );
 
+    // Create LP token mint
+    const lpMint = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
 
-  it("Is initialized with two tokens!", async () => {
-    const tx = await program.methods.initialize().rpc();
+    // Create liquidity pool account
+    const liquidityPool = anchor.web3.Keypair.generate();
+
+    console.log(
+        `liquidityPool: ${liquidityPool.publicKey.toBase58()}\n`,
+        `tokenA: ${userTokenAccountA.address.toBase58()}\n`,
+        `tokenB: ${userTokenAccountB.address.toBase58()}\n`,
+        `lpMint: ${lpMint.toBase58()}\n`,
+        `user: ${user_account.publicKey.toBase58()}\n`,
+        `system program: ${anchor.web3.SystemProgram.programId.toBase58()}\n`,
+        `rent: ${anchor.web3.SYSVAR_RENT_PUBKEY.toBase58()}\n`
+    )
+
+    // Add your test here.
+    const tx = await program.methods.initialize()
+        .accounts({
+            liquidityPool: liquidityPool.publicKey,
+            tokenA: userTokenAccountA.address,
+            tokenB: userTokenAccountB.address,
+            lpMint: lpMint,
+            user: user_account.publicKey,
+            systemProgram: anchor.web3.SystemProgram.programId,
+            rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        })
+        .signers([user_account, liquidityPool])
+        .rpc();
     console.log("Your transaction signature", tx);
   });
 });
