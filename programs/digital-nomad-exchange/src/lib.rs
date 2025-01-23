@@ -11,7 +11,12 @@ pub mod digital_nomad_exchange {
     // This is the entry point for the program.
     // It will create a new Liquidity Pool account and mint LP tokens to the user.
     pub fn initialize(ctx: Context<CreateLiquidityPool>) -> Result<()> {
-        msg!("Greetings from: {:?}", ctx.program_id);
+        let liquidity_pool = &mut ctx.accounts.liquidity_pool;
+        // Initialize the liquidity pool account
+        liquidity_pool.token_a = ctx.accounts.token_a.key();
+        liquidity_pool.token_b = ctx.accounts.token_b.key();
+        liquidity_pool.lp_mint = ctx.accounts.lp_mint.key();
+        liquidity_pool.owner = ctx.accounts.user.key();
         Ok(())
     }
 
