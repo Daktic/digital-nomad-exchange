@@ -138,14 +138,30 @@ describe("digital-nomad-exchange", () => {
             user_account.publicKey
         );
 
+        const lpTokenAccountA = await getOrCreateAssociatedTokenAccount(
+            provider.connection,
+            user_account,
+            tokenA,
+            liquidityPool.publicKey
+        )
+
+        const lpTokenAccountB = await getOrCreateAssociatedTokenAccount(
+            provider.connection,
+            user_account,
+            tokenB,
+            liquidityPool.publicKey
+        )
+
         // Call the addLiquidity function on the program
         // The user will supply a 1:1 ratio of both tokens, each with 9 decimals
         // The anchor.BN is used to create a new Big Number instance
         await program.methods.addLiquidity(new anchor.BN(amount_to_send), new anchor.BN(amount_to_send))
             .accounts({
                 liquidityPool: liquidityPool.publicKey,
-                tokenA: userTokenAccountA.address,
-                tokenB: userTokenAccountB.address,
+                userTokenA: userTokenAccountA.address,
+                userTokenB: userTokenAccountB.address,
+                lpTokenA: lpTokenAccountA.address,
+                lpTokenB: lpTokenAccountB.address,
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
@@ -156,15 +172,21 @@ describe("digital-nomad-exchange", () => {
         // Fetch the token account information
         const tokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
         const tokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
-        const lpTokenAccountInfo = await getAccount(provider.connection, userAssociatedLPToken.address);
+        const lpTokenAAccountInfo = await getAccount(provider.connection, lpTokenAccountA.address);
+        const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB.address);
+        const userAssociatedLPTokenInfo = await getAccount(provider.connection, userAssociatedLPToken.address);
 
         // Log the balances
         console.log(`Token A Balance: ${tokenAAccountInfo.amount}`);
-        console.log(`Token B Balance: ${tokenBAccountInfo.amount}`);
-        console.log(`LP Token Balance: ${lpTokenAccountInfo.amount}`);
         assert.equal(tokenAAccountInfo.amount, 0, "Token A balance should be 0 after adding liquidity");
+        console.log(`Token B Balance: ${tokenBAccountInfo.amount}`);
         assert.equal(tokenBAccountInfo.amount, 0, "Token B balance should be 0 after adding liquidity");
-        assert.equal(lpTokenAccountInfo.amount, amount_to_send, "LP Token balance is incorrect");
+        console.log(`LP Token A Balance: ${lpTokenAAccountInfo.amount}`);
+        assert.equal(lpTokenAAccountInfo.amount, amount_to_send, "LP Token A balance is incorrect");
+        console.log(`LP Token A Balance: ${lpTokenBAccountInfo.amount}`);
+        assert.equal(lpTokenBAccountInfo.amount, amount_to_send, "LP Token B balance is incorrect");
+        console.log(`User LP Token Balance: ${userAssociatedLPTokenInfo.amount}`);
+        assert.equal(userAssociatedLPTokenInfo.amount, amount_to_send *2, "LP Token balance is incorrect");
 
     });
 });

@@ -32,7 +32,7 @@ pub mod digital_nomad_exchange {
         let cpi_accounts = MintTo {
             mint: ctx.accounts.lp_token.to_account_info(),
             to: ctx.accounts.user_lp_token_account.to_account_info(),
-            authority: ctx.accounts.liquidity_pool.to_account_info(),
+            authority: ctx.accounts.user.to_account_info(),
         };
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
@@ -74,14 +74,18 @@ pub struct AddLiquidity<'info> {
     #[account(mut)]
     pub liquidity_pool: Account<'info, LiquidityPool>,
     #[account(mut)]
-    pub token_a: Account<'info, TokenAccount>,
+    pub user_token_a: Account<'info, TokenAccount>,
     #[account(mut)]
-    pub token_b: Account<'info, TokenAccount>,
+    pub user_token_b: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub lp_token_a: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub lp_token_b: Account<'info, TokenAccount>,
     #[account(mut)]
     pub lp_token: Account<'info, Mint>,
     #[account(mut)]
     pub user_lp_token_account: Account<'info, TokenAccount>,
-    #[account(mut)]
+    #[account(mut, signer)]
     pub user: Signer<'info>,
     pub token_program: Program<'info, Token>,
 }
@@ -93,8 +97,8 @@ pub struct AddLiquidity<'info> {
 impl<'info> AddLiquidity<'info> {
     fn into_transfer_to_pool_a_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
-            from: self.user.to_account_info(),
-            to: self.token_a.to_account_info(),
+            from: self.user_token_a.to_account_info(),
+            to: self.lp_token_a.to_account_info(),
             authority: self.user.to_account_info(),
         };
         let cpi_program = self.token_program.to_account_info();
@@ -103,8 +107,8 @@ impl<'info> AddLiquidity<'info> {
 
     fn into_transfer_to_pool_b_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
-            from: self.user.to_account_info(),
-            to: self.token_b.to_account_info(),
+            from: self.user_token_b.to_account_info(),
+            to: self.lp_token_b.to_account_info(),
             authority: self.user.to_account_info(),
         };
         let cpi_program = self.token_program.to_account_info();
