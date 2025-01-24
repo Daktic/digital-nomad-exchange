@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { DigitalNomadExchange } from "../target/types/digital_nomad_exchange";
-import {Account, createMint, getOrCreateAssociatedTokenAccount, mintTo} from "@solana/spl-token";
+import {Account, createMint, getAccount, getOrCreateAssociatedTokenAccount, mintTo} from "@solana/spl-token";
 import {beforeEach} from "mocha";
 import * as assert from "node:assert";
 
@@ -70,7 +70,7 @@ describe("digital-nomad-exchange", () => {
             `liquidityPool: ${liquidityPool.publicKey.toBase58()}\n`,
             `tokenA: ${userTokenAccountA.address.toBase58()}\n`,
             `tokenB: ${userTokenAccountB.address.toBase58()}\n`,
-            `lpMint: ${lpToken.toBase58()}\n`,
+            `lpToken: ${lpToken.toBase58()}\n`,
             `user: ${user_account.publicKey.toBase58()}\n`,
             `system program: ${anchor.web3.SystemProgram.programId.toBase58()}\n`,
             `rent: ${anchor.web3.SYSVAR_RENT_PUBKEY.toBase58()}\n`
@@ -138,15 +138,33 @@ describe("digital-nomad-exchange", () => {
             user_account.publicKey
         );
 
+        // Call the addLiquidity function on the program
+        // The user will supply a 1:1 ratio of both tokens, each with 9 decimals
+        // The anchor.BN is used to create a new Big Number instance
         await program.methods.addLiquidity(new anchor.BN(amount_to_send), new anchor.BN(amount_to_send))
             .accounts({
                 liquidityPool: liquidityPool.publicKey,
                 tokenA: userTokenAccountA.address,
                 tokenB: userTokenAccountB.address,
-                lpToken: userAssociatedLPToken.address,
+                lpToken: lpToken,
+                userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
             })
+            .signers([user_account])
             .rpc();
+
+        // Fetch the token account information
+        const tokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
+        const tokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
+        const lpTokenAccountInfo = await getAccount(provider.connection, userAssociatedLPToken.address);
+
+        // Log the balances
+        console.log(`Token A Balance: ${tokenAAccountInfo.amount}`);
+        console.log(`Token B Balance: ${tokenBAccountInfo.amount}`);
+        console.log(`LP Token Balance: ${lpTokenAccountInfo.amount}`);
+        assert.equal(tokenAAccountInfo.amount, 0, "Token A balance should be 0 after adding liquidity");
+        assert.equal(tokenBAccountInfo.amount, 0, "Token B balance should be 0 after adding liquidity");
+        assert.equal(lpTokenAccountInfo.amount, amount_to_send, "LP Token balance is incorrect");
 
     });
 });
