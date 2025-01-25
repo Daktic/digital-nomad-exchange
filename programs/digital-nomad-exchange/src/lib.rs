@@ -86,7 +86,7 @@ impl LiquidityPool {
 
     fn calculate_lp_amount_to_mint(deposit_request: LPDepositRequest) -> u64 {
         // Check if the pool has no liquidity
-        if deposit_request.token_a_amount == 0 && deposit_request.token_b_amount == 0 {
+        if deposit_request.token_a_balance == 0 && deposit_request.token_b_balance == 0 {
             // Special case for initialization, we mint the LP tokens to the user
             LiquidityPool::calculate_lp_token_amount_for_initial_deposit(deposit_request)
         } else {
