@@ -28,7 +28,7 @@ pub mod digital_nomad_exchange {
         token::transfer(ctx.accounts.into_transfer_to_pool_a_context(), amount_a)?;
         token::transfer(ctx.accounts.into_transfer_to_pool_b_context(), amount_b)?;
 
-        // Mint LP tokens to user
+        // Create Mint LP transaction
         let cpi_accounts = MintTo {
             mint: ctx.accounts.lp_token.to_account_info(),
             to: ctx.accounts.user_lp_token_account.to_account_info(),
@@ -38,8 +38,17 @@ pub mod digital_nomad_exchange {
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
 
         // calculate amount to mint:
-        let amount_to_mint = LiquidityPool::calculate_lp_amount_to_mint(amount_a, amount_b);
+        let amount_to_mint = LiquidityPool::calculate_lp_amount_to_mint(
+            LPDepositRequest {
+                token_a_balance: ctx.accounts.lp_token_a.amount,
+                token_b_balance: ctx.accounts.lp_token_b.amount,
+                lp_token_balance: ctx.accounts.lp_token.supply,
+                token_a_amount: amount_a,
+                token_b_amount: amount_b,
+            }
+        );
 
+        // Execute Mint LP transaction
         token::mint_to(cpi_ctx, amount_to_mint)?;
 
         Ok(())
@@ -64,40 +73,42 @@ pub struct LiquidityPool {
     pub owner: Pubkey,
 }
 
+
+struct LPDepositRequest {
+    token_a_balance: u64,
+    token_b_balance: u64,
+    lp_token_balance: u64,
+    token_a_amount: u64,
+    token_b_amount: u64,
+}
+
 impl LiquidityPool {
 
-    fn pool_has_no_liquidity(&self) -> bool {
-        self.token_a == Pubkey::default() && self.token_b == Pubkey::default()
-    }
-
-    fn calculate_lp_amount_to_mint(&self, amount_a: u64, amount_b: u64) -> u64 {
-        // check if the pool has no liquidity
-        if self.pool_has_no_liquidity() {
+    fn calculate_lp_amount_to_mint(deposit_request: LPDepositRequest) -> u64 {
+        // Check if the pool has no liquidity
+        if deposit_request.token_a_amount == 0 && deposit_request.token_b_amount == 0 {
             // Special case for initialization, we mint the LP tokens to the user
-            self.calculate_lp_token_amount_for_initial_deposit(amount_a, amount_b)
+            LiquidityPool::calculate_lp_token_amount_for_initial_deposit(deposit_request)
         } else {
             // Calculate the amount of LP tokens to mint
-            self.calculate_lp_token_amount_for_standard_deposit(amount_a, amount_b)
+            LiquidityPool::calculate_lp_token_amount_for_standard_deposit(deposit_request)
         }
     }
 
-    fn calculate_lp_token_amount_for_standard_deposit(&self, amount_a: u64, amount_b: u64) -> u64 {
+    fn calculate_lp_token_amount_for_standard_deposit(deposit_request: LPDepositRequest) -> u64 {
         // Calculate the amount of LP tokens to mint
-        // Get the reserve amount of token A in the pool
 
-        // Get the reserve amount of token B in the pool
-
-        // Get the total supply of LP tokens
-
-        // Calculate the amount of LP tokens to mint
         // Total LP amount * min(amount_a / reserve_a, amount_b / reserve_b)
-        0
+        deposit_request.lp_token_balance * std::cmp::min(
+            deposit_request.token_a_amount / deposit_request.token_a_balance,
+            deposit_request.token_b_amount / deposit_request.token_b_balance,
+        )
     }
 
-    fn calculate_lp_token_amount_for_initial_deposit(amount_a: u64, amount_b: u64) -> u64 {
+    fn calculate_lp_token_amount_for_initial_deposit(deposit_request: LPDepositRequest) -> u64 {
         // Calculate the amount of LP tokens to mint
         // Special case for initialization, we mint the LP tokens to the user
-        ((amount_a * amount_b) as f64).sqrt() as u64
+        ((deposit_request.token_a_amount * deposit_request.token_b_amount) as f64).sqrt() as u64
     }
 }
 
