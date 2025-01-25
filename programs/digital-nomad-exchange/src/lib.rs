@@ -73,7 +73,7 @@ pub struct LiquidityPool {
     pub owner: Pubkey,
 }
 
-
+#[derive(Debug)]
 struct LPDepositRequest {
     token_a_balance: u64,
     token_b_balance: u64,
@@ -99,10 +99,10 @@ impl LiquidityPool {
         // Calculate the amount of LP tokens to mint
 
         // Total LP amount * min(amount_a / reserve_a, amount_b / reserve_b)
-        deposit_request.lp_token_balance * std::cmp::min(
-            deposit_request.token_a_amount / deposit_request.token_a_balance,
-            deposit_request.token_b_amount / deposit_request.token_b_balance,
-        )
+        (deposit_request.lp_token_balance as f64 * f64::min(
+            deposit_request.token_a_amount as f64 / deposit_request.token_a_balance as f64,
+            deposit_request.token_b_amount as f64 / deposit_request.token_b_balance as f64,
+        )) as u64
     }
 
     fn calculate_lp_token_amount_for_initial_deposit(deposit_request: LPDepositRequest) -> u64 {
@@ -172,5 +172,67 @@ impl<'info> AddLiquidity<'info> {
         };
         let cpi_program = self.token_program.to_account_info();
         CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_calculate_lp_token_amount_for_initial_deposit() {
+        let deposit_request = LPDepositRequest {
+            token_a_balance: 0,
+            token_b_balance: 0,
+            lp_token_balance: 0,
+            token_a_amount: 1000,
+            token_b_amount: 1000,
+        };
+        let amount_to_mint = LiquidityPool::calculate_lp_amount_to_mint(deposit_request);
+        assert_eq!(amount_to_mint, 1000, "Initial deposit should mint 1000 LP tokens");
+    }
+
+    #[test]
+    fn test_calculate_lp_token_amount_for_standard_deposit() {
+        let deposit_request = LPDepositRequest {
+            token_a_balance: 1000,
+            token_b_balance: 1000,
+            lp_token_balance: 1000,
+            token_a_amount: 500,
+            token_b_amount: 500,
+        };
+        let change_token_a = deposit_request.token_a_amount as f64 / deposit_request.token_a_balance as f64;
+        let change_token_b = deposit_request.token_b_amount as f64 / deposit_request.token_b_balance as f64;
+        let expected_amount = (deposit_request.lp_token_balance as f64 * f64::min(
+            change_token_a,
+            change_token_b,
+        )) as u64;
+        // Should be 1000 * 0.5 = 500
+        assert_eq!(expected_amount, 500, "Standard deposit should mint 500 LP tokens");
+        let amount_to_mint = LiquidityPool::calculate_lp_amount_to_mint(deposit_request);
+
+        assert_eq!(amount_to_mint, expected_amount, "Standard deposit should mint 500 LP tokens");
+    }
+
+    #[test]
+    fn test_calculate_lp_token_amount_for_unequal_deposit() {
+        let deposit_request = LPDepositRequest {
+            token_a_balance: 1000,
+            token_b_balance: 1000,
+            lp_token_balance: 1000,
+            token_a_amount: 100,
+            token_b_amount: 500,
+        };
+        let change_token_a = deposit_request.token_a_amount as f64 / deposit_request.token_a_balance as f64;
+        let change_token_b = deposit_request.token_b_amount as f64 / deposit_request.token_b_balance as f64;
+        let expected_amount = (deposit_request.lp_token_balance as f64 * f64::min(
+            change_token_a,
+            change_token_b,
+        )) as u64;
+        // Should be 1000 * 0.1 = 100
+        assert_eq!(expected_amount, 100, "Standard deposit should mint 500 LP tokens");
+        let amount_to_mint = LiquidityPool::calculate_lp_amount_to_mint(deposit_request);
+
+        assert_eq!(amount_to_mint, expected_amount, "Standard deposit should mint 500 LP tokens");
     }
 }
