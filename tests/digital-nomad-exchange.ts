@@ -18,6 +18,11 @@ describe("digital-nomad-exchange", () => {
     let userTokenAccountB: Account;
     let lpToken: anchor.web3.PublicKey;
     let liquidityPool: anchor.web3.Keypair;
+    let amount_to_mint: number;
+    let userAssociatedLPToken: Account;
+    let lpTokenAccountA: Account;
+    let lpTokenAccountB: Account;
+
 
     beforeEach(async () => {
         user_account = anchor.web3.Keypair.generate();
@@ -89,6 +94,49 @@ describe("digital-nomad-exchange", () => {
             .signers([user_account, liquidityPool])
             .rpc();
         console.log("Contract Deployed", liquidityPool.publicKey.toBase58());
+
+        // Add some tokens to user token accounts
+        amount_to_mint = 100_000_000_000;
+
+        // Mint each token to the user account
+        await mintTo(
+            provider.connection,
+            user_account,
+            tokenA,
+            userTokenAccountA.address,
+            user_account.publicKey,
+            amount_to_mint,
+        )
+        await mintTo(
+            provider.connection,
+            user_account,
+            tokenB,
+            userTokenAccountB.address,
+            user_account.publicKey,
+            amount_to_mint,
+        )
+
+        // Get the associated token account of the user
+        userAssociatedLPToken = await getOrCreateAssociatedTokenAccount(
+            provider.connection,
+            user_account,
+            lpToken,
+            user_account.publicKey
+        );
+
+        lpTokenAccountA = await getOrCreateAssociatedTokenAccount(
+            provider.connection,
+            user_account,
+            tokenA,
+            liquidityPool.publicKey
+        )
+
+        lpTokenAccountB = await getOrCreateAssociatedTokenAccount(
+            provider.connection,
+            user_account,
+            tokenB,
+            liquidityPool.publicKey
+        )
     })
 
       it("Is initialized!", async () => {
@@ -109,52 +157,10 @@ describe("digital-nomad-exchange", () => {
       });
 
     it("Can Add Liquidity", async () => {
-        // Add some tokens to user token accounts
-        const amount_to_send = 1000000000;
-
-        // Mint each token to the user account
-        await mintTo(
-            provider.connection,
-            user_account,
-            tokenA,
-            userTokenAccountA.address,
-            user_account.publicKey,
-            amount_to_send,
-        )
-        await mintTo(
-            provider.connection,
-            user_account,
-            tokenB,
-            userTokenAccountB.address,
-            user_account.publicKey,
-            amount_to_send,
-        )
-
-        // Get the associated token account of the user
-        const userAssociatedLPToken = await getOrCreateAssociatedTokenAccount(
-            provider.connection,
-            user_account,
-            lpToken,
-            user_account.publicKey
-        );
-
-        const lpTokenAccountA = await getOrCreateAssociatedTokenAccount(
-            provider.connection,
-            user_account,
-            tokenA,
-            liquidityPool.publicKey
-        )
-
-        const lpTokenAccountB = await getOrCreateAssociatedTokenAccount(
-            provider.connection,
-            user_account,
-            tokenB,
-            liquidityPool.publicKey
-        )
-
         // Call the addLiquidity function on the program
         // The user will supply a 1:1 ratio of both tokens, each with 9 decimals
         // The anchor.BN is used to create a new Big Number instance
+        const amount_to_send = amount_to_mint;
         await program.methods.addLiquidity(new anchor.BN(amount_to_send), new anchor.BN(amount_to_send))
             .accounts({
                 liquidityPool: liquidityPool.publicKey,
@@ -179,7 +185,7 @@ describe("digital-nomad-exchange", () => {
         // Calculate the expected lp balance
         // Since first deposit, should be equal to the sqrt of the two token amounts multiplied together.
         // Since we are adding 1:1, the sqrt is equal to the amount of either token., i.e. amount to send
-        const expected_lp_balance = Math.sqrt(amount_to_send * amount_to_send);
+        const expected_lp_balance = Math.sqrt(amount_to_mint * amount_to_mint);
         // Log anc check the balances
         console.log(`Token A Balance: ${tokenAAccountInfo.amount}`);
         assert.equal(tokenAAccountInfo.amount, 0, "Token A balance should be 0 after adding liquidity");
@@ -196,48 +202,8 @@ describe("digital-nomad-exchange", () => {
 
     it ("can add unequal initial liquidity amounts", async () => {
         // Add some tokens to user token accounts
-        const amount_to_send_a = 1000000000;
-        const amount_to_send_b = 500000000;
-
-        // Mint each token to the user account
-        await mintTo(
-            provider.connection,
-            user_account,
-            tokenA,
-            userTokenAccountA.address,
-            user_account.publicKey,
-            amount_to_send_a,
-        )
-        await mintTo(
-            provider.connection,
-            user_account,
-            tokenB,
-            userTokenAccountB.address,
-            user_account.publicKey,
-            amount_to_send_b,
-        )
-
-        // Get the associated token account of the user
-        const userAssociatedLPToken = await getOrCreateAssociatedTokenAccount(
-            provider.connection,
-            user_account,
-            lpToken,
-            user_account.publicKey
-        );
-
-        const lpTokenAccountA = await getOrCreateAssociatedTokenAccount(
-            provider.connection,
-            user_account,
-            tokenA,
-            liquidityPool.publicKey
-        )
-
-        const lpTokenAccountB = await getOrCreateAssociatedTokenAccount(
-            provider.connection,
-            user_account,
-            tokenB,
-            liquidityPool.publicKey
-        )
+        const amount_to_send_a = 1_000_000_000;
+        const amount_to_send_b = 500_000_000;
 
         // Call the addLiquidity function on the program with two different amounts
         await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
@@ -266,9 +232,9 @@ describe("digital-nomad-exchange", () => {
         const expected_lp_balance = Math.floor(Math.sqrt(amount_to_send_a * amount_to_send_b));
         // Log anc check the balances
         console.log(`Token A Balance: ${tokenAAccountInfo.amount}`);
-        assert.equal(tokenAAccountInfo.amount, 0, "Token A balance should be 0 after adding liquidity");
+        assert.equal(tokenAAccountInfo.amount, amount_to_mint-amount_to_send_a, "Token A balance should be 0 after adding liquidity");
         console.log(`Token B Balance: ${tokenBAccountInfo.amount}`);
-        assert.equal(tokenBAccountInfo.amount, 0, "Token B balance should be 0 after adding liquidity");
+        assert.equal(tokenBAccountInfo.amount, amount_to_mint-amount_to_send_b, "Token B balance should be 0 after adding liquidity");
         console.log(`LP Token A Balance: ${lpTokenAAccountInfo.amount}`);
         assert.equal(lpTokenAAccountInfo.amount, amount_to_send_a, "LP Token A balance is incorrect");
         console.log(`LP Token A Balance: ${lpTokenBAccountInfo.amount}`);
