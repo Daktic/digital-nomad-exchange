@@ -36,11 +36,22 @@ pub mod digital_nomad_exchange {
         };
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-        token::mint_to(cpi_ctx, amount_a + amount_b)?;
+
+        // calculate amount to mint:
+        let amount_to_mint = LiquidityPool::calculate_lp_amount_to_mint(amount_a, amount_b);
+
+        token::mint_to(cpi_ctx, amount_to_mint)?;
 
         Ok(())
     }
 }
+
+// fn calculate_lp_token_amount_for_add_liquidity(amount_a: u64, amount_b: u64) -> Result<u64> {
+//     // Calculate the amount of LP tokens to mint
+//     amount_a + amount_b
+// }
+
+
 
 // The main account for the liquidity pool.
 // It contains the two tokens and the LP token mint.
@@ -51,6 +62,43 @@ pub struct LiquidityPool {
     pub token_b: Pubkey,
     pub lp_token: Pubkey,
     pub owner: Pubkey,
+}
+
+impl LiquidityPool {
+
+    fn pool_has_no_liquidity(&self) -> bool {
+        self.token_a == Pubkey::default() && self.token_b == Pubkey::default()
+    }
+
+    fn calculate_lp_amount_to_mint(&self, amount_a: u64, amount_b: u64) -> u64 {
+        // check if the pool has no liquidity
+        if self.pool_has_no_liquidity() {
+            // Special case for initialization, we mint the LP tokens to the user
+            self.calculate_lp_token_amount_for_initial_deposit(amount_a, amount_b)
+        } else {
+            // Calculate the amount of LP tokens to mint
+            self.calculate_lp_token_amount_for_standard_deposit(amount_a, amount_b)
+        }
+    }
+
+    fn calculate_lp_token_amount_for_standard_deposit(&self, amount_a: u64, amount_b: u64) -> u64 {
+        // Calculate the amount of LP tokens to mint
+        // Get the reserve amount of token A in the pool
+
+        // Get the reserve amount of token B in the pool
+
+        // Get the total supply of LP tokens
+
+        // Calculate the amount of LP tokens to mint
+        // Total LP amount * min(amount_a / reserve_a, amount_b / reserve_b)
+        0
+    }
+
+    fn calculate_lp_token_amount_for_initial_deposit(amount_a: u64, amount_b: u64) -> u64 {
+        // Calculate the amount of LP tokens to mint
+        // Special case for initialization, we mint the LP tokens to the user
+        ((amount_a * amount_b) as f64).sqrt() as u64
+    }
 }
 
 // The context for the initialize function.
