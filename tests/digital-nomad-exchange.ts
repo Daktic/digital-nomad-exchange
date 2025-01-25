@@ -193,4 +193,88 @@ describe("digital-nomad-exchange", () => {
         assert.equal(userAssociatedLPTokenInfo.amount, expected_lp_balance, "LP Token balance is incorrect");
 
     });
+
+    it ("can add unequal initial liquidity amounts", async () => {
+        // Add some tokens to user token accounts
+        const amount_to_send_a = 1000000000;
+        const amount_to_send_b = 500000000;
+
+        // Mint each token to the user account
+        await mintTo(
+            provider.connection,
+            user_account,
+            tokenA,
+            userTokenAccountA.address,
+            user_account.publicKey,
+            amount_to_send_a,
+        )
+        await mintTo(
+            provider.connection,
+            user_account,
+            tokenB,
+            userTokenAccountB.address,
+            user_account.publicKey,
+            amount_to_send_b,
+        )
+
+        // Get the associated token account of the user
+        const userAssociatedLPToken = await getOrCreateAssociatedTokenAccount(
+            provider.connection,
+            user_account,
+            lpToken,
+            user_account.publicKey
+        );
+
+        const lpTokenAccountA = await getOrCreateAssociatedTokenAccount(
+            provider.connection,
+            user_account,
+            tokenA,
+            liquidityPool.publicKey
+        )
+
+        const lpTokenAccountB = await getOrCreateAssociatedTokenAccount(
+            provider.connection,
+            user_account,
+            tokenB,
+            liquidityPool.publicKey
+        )
+
+        // Call the addLiquidity function on the program with two different amounts
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
+            .accounts({
+                liquidityPool: liquidityPool.publicKey,
+                userTokenA: userTokenAccountA.address,
+                userTokenB: userTokenAccountB.address,
+                lpTokenA: lpTokenAccountA.address,
+                lpTokenB: lpTokenAccountB.address,
+                lpToken: lpToken,
+                userLpTokenAccount: userAssociatedLPToken.address,
+                user: user_account.publicKey,
+            })
+            .signers([user_account])
+            .rpc();
+
+        // Fetch the token account information
+        const tokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
+        const tokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
+        const lpTokenAAccountInfo = await getAccount(provider.connection, lpTokenAccountA.address);
+        const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB.address);
+        const userAssociatedLPTokenInfo = await getAccount(provider.connection, userAssociatedLPToken.address);
+
+        // Calculate the expected lp balance
+        // The LP token amount should be the geometric mean of the two token amounts
+        const expected_lp_balance = Math.floor(Math.sqrt(amount_to_send_a * amount_to_send_b));
+        // Log anc check the balances
+        console.log(`Token A Balance: ${tokenAAccountInfo.amount}`);
+        assert.equal(tokenAAccountInfo.amount, 0, "Token A balance should be 0 after adding liquidity");
+        console.log(`Token B Balance: ${tokenBAccountInfo.amount}`);
+        assert.equal(tokenBAccountInfo.amount, 0, "Token B balance should be 0 after adding liquidity");
+        console.log(`LP Token A Balance: ${lpTokenAAccountInfo.amount}`);
+        assert.equal(lpTokenAAccountInfo.amount, amount_to_send_a, "LP Token A balance is incorrect");
+        console.log(`LP Token A Balance: ${lpTokenBAccountInfo.amount}`);
+        assert.equal(lpTokenBAccountInfo.amount, amount_to_send_b, "LP Token B balance is incorrect");
+        console.log(`User LP Token Balance: ${userAssociatedLPTokenInfo.amount}`);
+        console.log(`Expected LP Token Balance: ${expected_lp_balance}`);
+        assert.equal(userAssociatedLPTokenInfo.amount, expected_lp_balance, "LP Token balance is incorrect");
+    });
 });
