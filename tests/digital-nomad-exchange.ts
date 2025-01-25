@@ -176,7 +176,11 @@ describe("digital-nomad-exchange", () => {
         const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB.address);
         const userAssociatedLPTokenInfo = await getAccount(provider.connection, userAssociatedLPToken.address);
 
-        // Log the balances
+        // Calculate the expected lp balance
+        // Since first deposit, should be equal to the sqrt of the two token amounts multiplied together.
+        // Since we are adding 1:1, the sqrt is equal to the amount of either token., i.e. amount to send
+        const expected_lp_balance = Math.sqrt(amount_to_send * amount_to_send);
+        // Log anc check the balances
         console.log(`Token A Balance: ${tokenAAccountInfo.amount}`);
         assert.equal(tokenAAccountInfo.amount, 0, "Token A balance should be 0 after adding liquidity");
         console.log(`Token B Balance: ${tokenBAccountInfo.amount}`);
@@ -186,7 +190,7 @@ describe("digital-nomad-exchange", () => {
         console.log(`LP Token A Balance: ${lpTokenBAccountInfo.amount}`);
         assert.equal(lpTokenBAccountInfo.amount, amount_to_send, "LP Token B balance is incorrect");
         console.log(`User LP Token Balance: ${userAssociatedLPTokenInfo.amount}`);
-        assert.equal(userAssociatedLPTokenInfo.amount, amount_to_send *2, "LP Token balance is incorrect");
+        assert.equal(userAssociatedLPTokenInfo.amount, expected_lp_balance, "LP Token balance is incorrect");
 
     });
 });
