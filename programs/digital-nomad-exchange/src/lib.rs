@@ -116,7 +116,7 @@ impl LiquidityPool {
         // Special case for initialization, we mint the LP tokens to the user
         // Check if overflow
         match deposit_request.token_a_amount.checked_mul(deposit_request.token_b_amount) {
-            Some(amount) => amount.isqrt(),
+            Some(amount) => (amount as f64).sqrt() as u64,
             None => {
                 // Overflow, use the decimals to re multiply
                 let adjusted_amount_a = deposit_request.token_a_amount as f64 / 10f64.powi(deposit_request.token_a_decimals as i32);
