@@ -41,8 +41,11 @@ pub mod digital_nomad_exchange {
         let amount_to_mint = LiquidityPool::calculate_lp_amount_to_mint(
             LPDepositRequest {
                 token_a_balance: ctx.accounts.lp_token_a.amount,
+                token_a_decimals: ctx.accounts.mint_a.decimals,
                 token_b_balance: ctx.accounts.lp_token_b.amount,
+                token_b_decimals: ctx.accounts.mint_b.decimals,
                 lp_token_balance: ctx.accounts.lp_token.supply,
+                lp_token_decimals: ctx.accounts.lp_token.decimals,
                 token_a_amount: amount_a,
                 token_b_amount: amount_b,
             }
@@ -76,8 +79,11 @@ pub struct LiquidityPool {
 #[derive(Debug)]
 struct LPDepositRequest {
     token_a_balance: u64,
+    token_a_decimals: u8,
     token_b_balance: u64,
+    token_b_decimals: u8,
     lp_token_balance: u64,
+    lp_token_decimals: u8,
     token_a_amount: u64,
     token_b_amount: u64,
 }
@@ -108,7 +114,17 @@ impl LiquidityPool {
     fn calculate_lp_token_amount_for_initial_deposit(deposit_request: LPDepositRequest) -> u64 {
         // Calculate the amount of LP tokens to mint
         // Special case for initialization, we mint the LP tokens to the user
-        ((deposit_request.token_a_amount * deposit_request.token_b_amount) as f64).sqrt() as u64
+        // Check if overflow
+        match deposit_request.token_a_amount.checked_mul(deposit_request.token_b_amount) {
+            Some(amount) => amount.isqrt(),
+            None => {
+                // Overflow, use the decimals to re multiply
+                let adjusted_amount_a = deposit_request.token_a_amount as f64 / 10f64.powi(deposit_request.token_a_decimals as i32);
+                let adjusted_amount_b = deposit_request.token_b_amount as f64 / 10f64.powi(deposit_request.token_b_decimals as i32);
+                // We then need to transfer the decimal places to the LP token amount
+                (((adjusted_amount_a * adjusted_amount_b).sqrt()) * 10f64.powi(deposit_request.lp_token_decimals as i32)) as u64
+            },
+        }
     }
 }
 
@@ -132,8 +148,10 @@ pub struct CreateLiquidityPool<'info> {
 pub struct AddLiquidity<'info> {
     #[account(mut)]
     pub liquidity_pool: Account<'info, LiquidityPool>,
+    pub mint_a: Account<'info, Mint>,
     #[account(mut)]
     pub user_token_a: Account<'info, TokenAccount>,
+    pub mint_b: Account<'info, Mint>,
     #[account(mut)]
     pub user_token_b: Account<'info, TokenAccount>,
     #[account(mut)]
@@ -183,8 +201,11 @@ mod tests {
     fn test_calculate_lp_token_amount_for_initial_deposit() {
         let deposit_request = LPDepositRequest {
             token_a_balance: 0,
+            token_a_decimals: 9,
             token_b_balance: 0,
+            token_b_decimals: 9,
             lp_token_balance: 0,
+            lp_token_decimals: 9,
             token_a_amount: 1000,
             token_b_amount: 1000,
         };
@@ -196,8 +217,11 @@ mod tests {
     fn test_calculate_lp_token_amount_for_standard_deposit() {
         let deposit_request = LPDepositRequest {
             token_a_balance: 1000,
+            token_a_decimals: 9,
             token_b_balance: 1000,
+            token_b_decimals: 9,
             lp_token_balance: 1000,
+            lp_token_decimals: 9,
             token_a_amount: 500,
             token_b_amount: 500,
         };
@@ -218,8 +242,11 @@ mod tests {
     fn test_calculate_lp_token_amount_for_unequal_deposit() {
         let deposit_request = LPDepositRequest {
             token_a_balance: 1000,
+            token_a_decimals: 9,
             token_b_balance: 1000,
+            token_b_decimals: 9,
             lp_token_balance: 1000,
+            lp_token_decimals: 9,
             token_a_amount: 100,
             token_b_amount: 500,
         };
@@ -234,5 +261,24 @@ mod tests {
         let amount_to_mint = LiquidityPool::calculate_lp_amount_to_mint(deposit_request);
 
         assert_eq!(amount_to_mint, expected_amount, "Standard deposit should mint 500 LP tokens");
+    }
+
+    #[test]
+    fn calculate_lp_token_amount_initial_large_amounts() {
+        let deposit_request = LPDepositRequest {
+            token_a_balance: 0,
+            token_a_decimals: 9,
+            token_b_balance: 0,
+            token_b_decimals: 9,
+            lp_token_balance: 1_000_000_000,
+            lp_token_decimals: 9,
+            token_a_amount: 500_000_000_000,
+            token_b_amount: 500_000_000_000,
+        };
+        let expected_amount = (((deposit_request.token_a_amount as f64 / 10f64.powi(deposit_request.token_a_decimals as i32)
+            * deposit_request.token_b_amount as f64 / 10f64.powi(deposit_request.token_b_decimals as i32)).sqrt()) * 10f64.powi(9)) as u64;
+        let amount_to_mint = LiquidityPool::calculate_lp_amount_to_mint(deposit_request);
+
+        assert_eq!(amount_to_mint, expected_amount as u64, "Standard deposit should mint 500 LP tokens");
     }
 }
