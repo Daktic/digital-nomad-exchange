@@ -164,7 +164,9 @@ describe("digital-nomad-exchange", () => {
         await program.methods.addLiquidity(new anchor.BN(amount_to_send), new anchor.BN(amount_to_send))
             .accounts({
                 liquidityPool: liquidityPool.publicKey,
+                mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
+                mintB: tokenB,
                 userTokenB: userTokenAccountB.address,
                 lpTokenA: lpTokenAccountA.address,
                 lpTokenB: lpTokenAccountB.address,
@@ -209,7 +211,9 @@ describe("digital-nomad-exchange", () => {
         await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
             .accounts({
                 liquidityPool: liquidityPool.publicKey,
+                mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
+                mintB: tokenB,
                 userTokenB: userTokenAccountB.address,
                 lpTokenA: lpTokenAccountA.address,
                 lpTokenB: lpTokenAccountB.address,
