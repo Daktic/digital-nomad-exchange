@@ -426,4 +426,16 @@ mod tests {
         assert_eq!(amount_b, 100, "Should withdraw 10 token B");
 
     }
+
+    #[test]
+    fn test_remove_liquidity_withdrawal_unequal_amounts() {
+        let lp_token_amount = 100;
+        let lp_token_supply = 1_300;
+        let token_a_balance = 13_400;
+        let token_b_balance = 342;
+        let (amount_a, amount_b) = LiquidityPool::calculate_token_amount_to_remove(lp_token_amount, lp_token_supply, token_a_balance, token_b_balance);
+        assert_eq!(amount_a, 1030, "Should withdraw 10 token A");
+        assert_eq!(amount_b, 26, "Should withdraw 10 token B");
+
+    }
 }
