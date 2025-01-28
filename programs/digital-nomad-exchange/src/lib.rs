@@ -149,9 +149,8 @@ impl LiquidityPool {
     fn calculate_token_amount_to_remove(lp_token_amount: u64, lp_token_supply: u64, token_a_balance: u64, token_b_balance: u64) -> (u64, u64) {
         // Calculate the amount of tokens to remove
         let lp_ratio = lp_token_amount as f64 / lp_token_supply as f64;
-        let token_ratio = token_a_balance as f64 / token_b_balance as f64;
-        let amount_a = (token_a_balance as f64 * lp_ratio * token_ratio) as u64;
-        let amount_b = (token_a_balance as f64 * lp_ratio * (1_f64-token_ratio)) as u64;
+        let amount_a = (token_a_balance as f64 * lp_ratio) as u64;
+        let amount_b = (token_b_balance as f64 * lp_ratio) as u64;
         (amount_a, amount_b)
     }
 }
@@ -419,12 +418,12 @@ mod tests {
     #[test]
     fn test_remove_liquidity_standard_withdrawal() {
         let lp_token_amount = 100;
-        let lp_token_supply = 1000;
-        let token_a_balance = 1000;
-        let token_b_balance = 1000;
+        let lp_token_supply = 1_000;
+        let token_a_balance = 1_000;
+        let token_b_balance = 1_000;
         let (amount_a, amount_b) = LiquidityPool::calculate_token_amount_to_remove(lp_token_amount, lp_token_supply, token_a_balance, token_b_balance);
-        assert_eq!(amount_a, 10, "Should withdraw 10 token A");
-        assert_eq!(amount_b, 10, "Should withdraw 10 token B");
+        assert_eq!(amount_a, 100, "Should withdraw 10 token A");
+        assert_eq!(amount_b, 100, "Should withdraw 10 token B");
 
     }
 }
