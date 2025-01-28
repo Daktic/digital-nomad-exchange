@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount, Transfer};
+use anchor_spl::token::{self, Burn, Mint, MintTo, Token, TokenAccount, Transfer};
 
 declare_id!("D4JCMSe8bh1GcuPyGjicJ4JbdcmWmAPLvcuDqgpVSWFB");
 
@@ -53,6 +53,25 @@ pub mod digital_nomad_exchange {
 
         // Execute Mint LP transaction
         token::mint_to(cpi_ctx, amount_to_mint)?;
+
+        Ok(())
+    }
+
+    pub fn remove_liquidity(ctx: Context<RemoveLiquidity>, amount: u64) -> Result<()> {
+        // Burn LP tokens from user
+        token::burn(ctx.accounts.into_burn_context(), amount)?;
+
+        // Calculate amount to transfer for each token
+        let (amount_a, amount_b) = LiquidityPool::calculate_token_amount_to_remove(
+            amount,
+            ctx.accounts.lp_token.supply,
+            ctx.accounts.lp_token_a.amount,
+            ctx.accounts.lp_token_b.amount
+        );
+
+        // Transfer tokens to user
+        token::transfer(ctx.accounts.into_transfer_from_pool_a_context(), amount_a)?;
+        token::transfer(ctx.accounts.into_transfer_from_pool_b_context(), amount_b)?;
 
         Ok(())
     }
@@ -126,6 +145,15 @@ impl LiquidityPool {
             },
         }
     }
+
+    fn calculate_token_amount_to_remove(lp_token_amount: u64, lp_token_supply: u64, token_a_balance: u64, token_b_balance: u64) -> (u64, u64) {
+        // Calculate the amount of tokens to remove
+        let lp_ratio = lp_token_amount as f64 / lp_token_supply as f64;
+        let token_ratio = token_a_balance as f64 / token_b_balance as f64;
+        let amount_a = (token_a_balance as f64 * lp_ratio * token_ratio) as u64;
+        let amount_b = (token_a_balance as f64 * lp_ratio * (1_f64-token_ratio)) as u64;
+        (amount_a, amount_b)
+    }
 }
 
 // The context for the initialize function.
@@ -168,7 +196,7 @@ pub struct AddLiquidity<'info> {
 }
 
 // The add_liquidity function will add liquidity to the pool.
-// the 'info lifetime is the lifetime of the function call.
+// the info lifetime is the lifetime of the function call.
 // The function will transfer the token A and B from the user to the pool.
 // It will mint LP tokens to the user.
 impl<'info> AddLiquidity<'info> {
@@ -186,6 +214,66 @@ impl<'info> AddLiquidity<'info> {
         let cpi_accounts = Transfer {
             from: self.user_token_b.to_account_info(),
             to: self.lp_token_b.to_account_info(),
+            authority: self.user.to_account_info(),
+        };
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+
+// The context for removing liquidity from the pool
+#[derive(Accounts)]
+pub struct RemoveLiquidity<'info> {
+    #[account(mut)]
+    pub liquidity_pool: Account<'info, LiquidityPool>,
+    pub mint_a: Account<'info, Mint>,
+    #[account(mut)]
+    pub user_token_a: Account<'info, TokenAccount>,
+    pub mint_b: Account<'info, Mint>,
+    #[account(mut)]
+    pub user_token_b: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub lp_token_a: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub lp_token_b: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub lp_token: Account<'info, Mint>,
+    #[account(mut)]
+    pub user_lp_token_account: Account<'info, TokenAccount>,
+    #[account(mut, signer)]
+    pub user: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
+
+// The remove_liquidity function will remove liquidity from the pool.
+// The function will burn the LP tokens from the user.
+// It will transfer token A and B to the user proportional to the pools reserves.
+impl<'info>RemoveLiquidity<'info> {
+    fn into_transfer_from_pool_a_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.lp_token_a.to_account_info(),
+            to: self.user_token_a.to_account_info(),
+            authority: self.user.to_account_info(),
+        };
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+
+    fn into_transfer_from_pool_b_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.lp_token_b.to_account_info(),
+            to: self.user_token_b.to_account_info(),
+            authority: self.user.to_account_info(),
+        };
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+
+    fn into_burn_context(&self) -> CpiContext<'_, '_, '_, 'info, Burn<'info>> {
+        let cpi_accounts = Burn {
+            mint: self.lp_token.to_account_info(),
+            from: self.user_lp_token_account.to_account_info(),
             authority: self.user.to_account_info(),
         };
         let cpi_program = self.token_program.to_account_info();
@@ -326,5 +414,17 @@ mod tests {
         let amount_to_mint = LiquidityPool::calculate_lp_amount_to_mint(deposit_request);
 
         assert_eq!(amount_to_mint, expected_amount, "Deposit should mint 500 LP tokens");
+    }
+
+    #[test]
+    fn test_remove_liquidity_standard_withdrawal() {
+        let lp_token_amount = 100;
+        let lp_token_supply = 1000;
+        let token_a_balance = 1000;
+        let token_b_balance = 1000;
+        let (amount_a, amount_b) = LiquidityPool::calculate_token_amount_to_remove(lp_token_amount, lp_token_supply, token_a_balance, token_b_balance);
+        assert_eq!(amount_a, 10, "Should withdraw 10 token A");
+        assert_eq!(amount_b, 10, "Should withdraw 10 token B");
+
     }
 }
