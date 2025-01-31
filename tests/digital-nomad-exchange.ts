@@ -6,10 +6,10 @@ import {beforeEach} from "mocha";
 import * as assert from "node:assert";
 
 describe("digital-nomad-exchange", () => {
-  // Configure the client to use the local cluster.
-  const provider = anchor.AnchorProvider.env();
-  anchor.setProvider(provider);
-  const program = anchor.workspace.DigitalNomadExchange as Program<DigitalNomadExchange>;
+    // Configure the client to use the local cluster.
+    const provider = anchor.AnchorProvider.env();
+    anchor.setProvider(provider);
+    const program = anchor.workspace.DigitalNomadExchange as Program<DigitalNomadExchange>;
 
     let user_account: anchor.web3.Keypair;
     let tokenA: anchor.web3.PublicKey;
@@ -139,22 +139,22 @@ describe("digital-nomad-exchange", () => {
         )
     })
 
-      it("Is initialized!", async () => {
+    it("Is initialized!", async () => {
 
-          // Fetch the liquidity pool account
-          const liquidityPoolAccount = await program.account.liquidityPool.fetch(liquidityPool.publicKey);
+        // Fetch the liquidity pool account
+        const liquidityPoolAccount = await program.account.liquidityPool.fetch(liquidityPool.publicKey);
 
-          console.log(`Liquidity Pool Account: ${JSON.stringify(liquidityPoolAccount)}`);
+        console.log(`Liquidity Pool Account: ${JSON.stringify(liquidityPoolAccount)}`);
 
-          // Check if the liquidity pool account has the expected values
-          assert.ok(liquidityPoolAccount.tokenA.equals(userTokenAccountA.address), "TokenA accounts do not match");
-          assert.ok(liquidityPoolAccount.tokenB.equals(userTokenAccountB.address), "TokenB accounts do not match");
-          assert.ok(liquidityPoolAccount.lpToken.equals(lpToken), "LP mint accounts do not match");
-          assert.ok(liquidityPoolAccount.owner.equals(user_account.publicKey), "Owner accounts do not match");
+        // Check if the liquidity pool account has the expected values
+        assert.ok(liquidityPoolAccount.tokenA.equals(userTokenAccountA.address), "TokenA accounts do not match");
+        assert.ok(liquidityPoolAccount.tokenB.equals(userTokenAccountB.address), "TokenB accounts do not match");
+        assert.ok(liquidityPoolAccount.lpToken.equals(lpToken), "LP mint accounts do not match");
+        assert.ok(liquidityPoolAccount.owner.equals(user_account.publicKey), "Owner accounts do not match");
 
-          console.log("Liquidity pool is initialized with the correct values");
+        console.log("Liquidity pool is initialized with the correct values");
 
-      });
+    });
 
     it("Can Add Liquidity", async () => {
         // Call the addLiquidity function on the program
@@ -202,7 +202,7 @@ describe("digital-nomad-exchange", () => {
 
     });
 
-    it ("can add unequal initial liquidity amounts", async () => {
+    it("can add unequal initial liquidity amounts", async () => {
         // Add some tokens to user token accounts
         const amount_to_send_a = 1_000_000_000;
         const amount_to_send_b = 500_000_000;
@@ -236,9 +236,9 @@ describe("digital-nomad-exchange", () => {
         const expected_lp_balance = Math.floor(Math.sqrt(amount_to_send_a * amount_to_send_b));
         // Log anc check the balances
         console.log(`Token A Balance: ${tokenAAccountInfo.amount}`);
-        assert.equal(tokenAAccountInfo.amount, amount_to_mint-amount_to_send_a, "Token A balance should be 0 after adding liquidity");
+        assert.equal(tokenAAccountInfo.amount, amount_to_mint - amount_to_send_a, "Token A balance should be 0 after adding liquidity");
         console.log(`Token B Balance: ${tokenBAccountInfo.amount}`);
-        assert.equal(tokenBAccountInfo.amount, amount_to_mint-amount_to_send_b, "Token B balance should be 0 after adding liquidity");
+        assert.equal(tokenBAccountInfo.amount, amount_to_mint - amount_to_send_b, "Token B balance should be 0 after adding liquidity");
         console.log(`LP Token A Balance: ${lpTokenAAccountInfo.amount}`);
         assert.equal(lpTokenAAccountInfo.amount, amount_to_send_a, "LP Token A balance is incorrect");
         console.log(`LP Token A Balance: ${lpTokenBAccountInfo.amount}`);
@@ -246,5 +246,64 @@ describe("digital-nomad-exchange", () => {
         console.log(`User LP Token Balance: ${userAssociatedLPTokenInfo.amount}`);
         console.log(`Expected LP Token Balance: ${expected_lp_balance}`);
         assert.equal(userAssociatedLPTokenInfo.amount, expected_lp_balance, "LP Token balance is incorrect");
+    });
+
+    it("can remove liquidity", async () => {
+        const amount_to_send_a = 1_000_000_000;
+        const amount_to_send_b = 500_000_000;
+
+        // Add some tokens to the liquidity pool
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
+            .accounts({
+                liquidityPool: liquidityPool.publicKey,
+                mintA: tokenA,
+                userTokenA: userTokenAccountA.address,
+                mintB: tokenB,
+                userTokenB: userTokenAccountB.address,
+                lpTokenA: lpTokenAccountA.address,
+                lpTokenB: lpTokenAccountB.address,
+                lpToken: lpToken,
+                userLpTokenAccount: userAssociatedLPToken.address,
+                user: user_account.publicKey,
+            })
+            .signers([user_account])
+            .rpc();
+
+        // Remove liquidity from the pool
+        const current_lp_balance = await getAccount(provider.connection, userAssociatedLPToken.address);
+
+        // remove 50% of the liquidity
+        const amount_to_remove = Math.floor(Number(current_lp_balance.amount / BigInt(2)))
+        await program.methods.removeLiquidity(new anchor.BN(amount_to_remove))
+            .accounts({
+                liquidityPool: liquidityPool.publicKey,
+                mintA: tokenA,
+                userTokenA: userTokenAccountA.address,
+                mintB: tokenB,
+                userTokenB: userTokenAccountB.address,
+                lpTokenA: lpTokenAccountA.address,
+                lpTokenB: lpTokenAccountB.address,
+                lpToken: lpToken,
+                userLpTokenAccount: userAssociatedLPToken.address,
+                user: user_account.publicKey,
+            })
+            .signers([user_account, liquidityPool])
+            .rpc();
+
+
+
+        // Fetch the token account information
+        const tokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
+        const tokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
+        const userAssociatedLPTokenInfo = await getAccount(provider.connection, userAssociatedLPToken.address);
+
+        // Log anc check the balances
+        console.log(`Token A Balance: ${tokenAAccountInfo.amount}`);
+        assert.equal(tokenAAccountInfo.amount, 99499999999, "Token balance A is incorrect");
+        console.log(`Token B Balance: ${tokenBAccountInfo.amount}`);
+        assert.equal(tokenBAccountInfo.amount, 99749999999, "Token balance B is incorrect");
+        console.log(`User LP Token Balance: ${userAssociatedLPTokenInfo.amount}`);
+        assert.equal(userAssociatedLPTokenInfo.amount, 353553391, "LP Token balance is incorrect");
+
     });
 });
