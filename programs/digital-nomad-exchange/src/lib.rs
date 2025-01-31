@@ -223,7 +223,7 @@ impl<'info> AddLiquidity<'info> {
 // The context for removing liquidity from the pool
 #[derive(Accounts)]
 pub struct RemoveLiquidity<'info> {
-    #[account(mut)]
+    #[account(mut, signer)]
     pub liquidity_pool: Account<'info, LiquidityPool>,
     pub mint_a: Account<'info, Mint>,
     #[account(mut)]
@@ -253,7 +253,7 @@ impl<'info>RemoveLiquidity<'info> {
         let cpi_accounts = Transfer {
             from: self.lp_token_a.to_account_info(),
             to: self.user_token_a.to_account_info(),
-            authority: self.user.to_account_info(),
+            authority: self.liquidity_pool.to_account_info(),
         };
         let cpi_program = self.token_program.to_account_info();
         CpiContext::new(cpi_program, cpi_accounts)
@@ -263,7 +263,7 @@ impl<'info>RemoveLiquidity<'info> {
         let cpi_accounts = Transfer {
             from: self.lp_token_b.to_account_info(),
             to: self.user_token_b.to_account_info(),
-            authority: self.user.to_account_info(),
+            authority: self.liquidity_pool.to_account_info()
         };
         let cpi_program = self.token_program.to_account_info();
         CpiContext::new(cpi_program, cpi_accounts)
