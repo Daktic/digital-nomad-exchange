@@ -76,7 +76,6 @@ pub mod digital_nomad_exchange {
         Ok(())
     }
 
-    // TODO
     pub fn swap_tokens(ctx: Context<SwapTokens>, amount: u64) -> Result<()> {
 
         // Calculate amount to transfer for token B
