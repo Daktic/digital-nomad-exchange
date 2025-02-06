@@ -306,4 +306,55 @@ describe("digital-nomad-exchange", () => {
         assert.equal(userAssociatedLPTokenInfo.amount, 353553391, "LP Token balance is incorrect");
 
     });
+
+    it('Can swap tokens', async () => {
+        const amount_to_send_a = 1_000_000_000;
+        const amount_to_send_b = 500_000_000;
+
+        // Add some tokens to the liquidity pool
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
+            .accounts({
+                liquidityPool: liquidityPool.publicKey,
+                mintA: tokenA,
+                userTokenA: userTokenAccountA.address,
+                mintB: tokenB,
+                userTokenB: userTokenAccountB.address,
+                lpTokenA: lpTokenAccountA.address,
+                lpTokenB: lpTokenAccountB.address,
+                lpToken: lpToken,
+                userLpTokenAccount: userAssociatedLPToken.address,
+                user: user_account.publicKey,
+            })
+            .signers([user_account])
+            .rpc();
+
+        // Swap tokens
+        const amount_to_swap = 100_000;
+        await program.methods.swapTokens(new anchor.BN(amount_to_swap))
+            .accounts({
+                liquidityPool: liquidityPool.publicKey,
+                // This will be standard so that token A is swapped for token b
+                mintA: tokenA,
+                userTokenA: userTokenAccountA.address,
+                mintB: tokenB,
+                userTokenB: userTokenAccountB.address,
+                lpTokenA: lpTokenAccountA.address,
+                lpTokenB: lpTokenAccountB.address,
+                lpToken: lpToken,
+                user: user_account.publicKey,
+            })
+            .signers([user_account, liquidityPool])
+            .rpc();
+
+        // Fetch the token account information
+        const tokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
+        const tokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
+
+        console.log(`Token A Balance: ${tokenAAccountInfo.amount}`);
+        assert.equal(tokenAAccountInfo.amount,
+            100_000_000_000 - amount_to_send_a - amount_to_swap, "Token balance A is incorrect");
+        // console.log(`Token B Balance: ${tokenBAccountInfo.amount}`);
+        // assert.equal(tokenBAccountInfo.amount, 99749999999, "Token balance B is incorrect");
+
+    });
 });
