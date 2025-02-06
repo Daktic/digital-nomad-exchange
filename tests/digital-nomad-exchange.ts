@@ -353,8 +353,17 @@ describe("digital-nomad-exchange", () => {
         console.log(`Token A Balance: ${tokenAAccountInfo.amount}`);
         assert.equal(tokenAAccountInfo.amount,
             100_000_000_000 - amount_to_send_a - amount_to_swap, "Token balance A is incorrect");
-        // console.log(`Token B Balance: ${tokenBAccountInfo.amount}`);
-        // assert.equal(tokenBAccountInfo.amount, 99749999999, "Token balance B is incorrect");
+
+        console.log(`Token B Balance: ${tokenBAccountInfo.amount}`);
+
+        const newBalanceA = BigInt(amount_to_send_a) + BigInt(amount_to_swap);
+        const newBalanceB = (BigInt(amount_to_send_a) * BigInt(amount_to_send_b)) / newBalanceA;
+        const expectedSwapAmount = BigInt(amount_to_send_b) - newBalanceB;
+
+        console.log(`Expected Swap Amount: ${expectedSwapAmount}`);
+        const expectedTokenBalance = BigInt(100_000_000_000) - BigInt(amount_to_send_b) + expectedSwapAmount;
+        console.log(`Expected Token Balance: ${expectedTokenBalance}`);
+        assert.equal(BigInt(tokenBAccountInfo.amount), expectedTokenBalance, "Token balance B is incorrect");
 
     });
 });
