@@ -280,6 +280,52 @@ impl<'info>RemoveLiquidity<'info> {
     }
 }
 
+// The swap tokens context is the main purpose of the liquidity pool.
+// It will swap tokens in the pool on a dynamic ratio.
+// It will take a fee for the swap that is splits amongst the liquidity providers
+#[derive(Accounts)]
+pub struct SwapTokens<'info> {
+    #[account(mut, signer)]
+    pub liquidity_pool: Account<'info, LiquidityPool>,
+    pub mint_a: Account<'info, Mint>,
+    #[account(mut)]
+    pub user_token_a: Account<'info, TokenAccount>,
+    pub mint_b: Account<'info, Mint>,
+    #[account(mut)]
+    pub user_token_b: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub lp_token_a: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub lp_token_b: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub lp_token: Account<'info, Mint>,
+    #[account(mut, signer)]
+    pub user: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
+impl<'info>SwapTokens<'info> {
+    fn into_transfer_from_pool_a_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.lp_token_a.to_account_info(),
+            to: self.user_token_a.to_account_info(),
+            authority: self.liquidity_pool.to_account_info(),
+        };
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+
+    fn into_transfer_from_pool_b_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.user_token_b.to_account_info(),
+            to: self.lp_token_b.to_account_info(),
+            authority: self.liquidity_pool.to_account_info()
+        };
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
