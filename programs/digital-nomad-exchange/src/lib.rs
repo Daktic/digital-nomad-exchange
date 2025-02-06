@@ -77,18 +77,22 @@ pub mod digital_nomad_exchange {
     }
 
     // TODO
-    // pub fn swap_tokens(ctx: Context<SwapTokens>, token, amount: u64) -> Result<()> {
-    //     // Transfer tokens from user to pool
-    //     token::transfer(ctx.accounts.into_transfer_from_pool_a_context(), amount)?;
-    //
-    //     // Calculate amount to transfer for token B
-    //     let amount_b = amount;
-    //
-    //     // Transfer tokens to user
-    //     token::transfer(ctx.accounts.into_transfer_from_pool_b_context(), amount_b)?;
-    //
-    //     Ok(())
-    // }
+    pub fn swap_tokens(ctx: Context<SwapTokens>, amount: u64) -> Result<()> {
+        // Transfer tokens from user to pool
+        token::transfer(ctx.accounts.into_transfer_from_pool_a_context(), amount)?;
+
+        // Calculate amount to transfer for token B
+        let amount_b = LiquidityPool::calculate_swap(
+            ctx.accounts.lp_token_a.amount,
+            ctx.accounts.lp_token_b.amount,
+            amount
+        );
+
+        // Transfer tokens to user
+        token::transfer(ctx.accounts.into_transfer_from_pool_b_context(), amount_b)?;
+
+        Ok(())
+    }
 }
 
 // fn calculate_lp_token_amount_for_add_liquidity(amount_a: u64, amount_b: u64) -> Result<u64> {
