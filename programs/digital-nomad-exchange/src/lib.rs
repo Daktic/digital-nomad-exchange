@@ -78,8 +78,6 @@ pub mod digital_nomad_exchange {
 
     // TODO
     pub fn swap_tokens(ctx: Context<SwapTokens>, amount: u64) -> Result<()> {
-        // Transfer tokens from user to pool
-        token::transfer(ctx.accounts.into_transfer_from_pool_a_context(), amount)?;
 
         // Calculate amount to transfer for token B
         let amount_b = LiquidityPool::calculate_swap(
@@ -88,8 +86,11 @@ pub mod digital_nomad_exchange {
             amount
         );
 
+        // Transfer tokens from user to pool
+        token::transfer(ctx.accounts.into_transfer_from_user_to_pool_a_context(), amount)?;
+
         // Transfer tokens to user
-        token::transfer(ctx.accounts.into_transfer_from_pool_b_context(), amount_b)?;
+        token::transfer(ctx.accounts.into_transfer_from_pool_b_to_user_context(), amount_b)?;
 
         Ok(())
     }
@@ -347,20 +348,20 @@ pub struct SwapTokens<'info> {
 }
 
 impl<'info>SwapTokens<'info> {
-    fn into_transfer_from_pool_a_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+    fn into_transfer_from_user_to_pool_a_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
-            from: self.lp_token_a.to_account_info(),
-            to: self.user_token_a.to_account_info(),
-            authority: self.liquidity_pool.to_account_info(),
+            from: self.user_token_a.to_account_info(),
+            to: self.lp_token_a.to_account_info(),
+            authority: self.user.to_account_info(),
         };
         let cpi_program = self.token_program.to_account_info();
         CpiContext::new(cpi_program, cpi_accounts)
     }
 
-    fn into_transfer_from_pool_b_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+    fn into_transfer_from_pool_b_to_user_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
-            from: self.user_token_b.to_account_info(),
-            to: self.lp_token_b.to_account_info(),
+            from: self.lp_token_b.to_account_info(),
+            to: self.user_token_b.to_account_info(),
             authority: self.liquidity_pool.to_account_info()
         };
         let cpi_program = self.token_program.to_account_info();
