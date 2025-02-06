@@ -171,11 +171,29 @@ impl LiquidityPool {
     fn calculate_swap(token_balance_a: u64, token_balance_b: u64, amount: u64) -> u64 {
         // Calculate the amount of tokens to swap
         // Add token balance a and amount to get the updated affect on the pool
-        let amount_a_new = token_balance_a + amount;
-        // Calculate the new balance of token b using the constant product formula
-        let amount_b_new = (token_balance_a * token_balance_b) / amount_a_new;
-        // Return the difference between the old and new balance of token b
-        token_balance_b - amount_b_new
+        // Check if overflow
+        match token_balance_a.checked_mul(token_balance_b) {
+            Some(product) => {
+                // Calculate the new balance of token a using the constant product formula
+                let amount_a_new = token_balance_a + amount;
+                // Calculate the new balance of token b using the constant product formula
+                let amount_b_new = (product / amount_a_new).min(token_balance_b);
+                // Return the difference between the old and new balance of token b
+                token_balance_b - amount_b_new
+            },
+            None => {
+                // Overflow, use the decimals to re multiply
+                let adjusted_token_balance_a = token_balance_a as f64 / 10f64.powi(9);
+                let adjusted_token_balance_b = token_balance_b as f64 / 10f64.powi(9);
+                let adjusted_amount = amount as f64 / 10f64.powi(9);
+                // Calculate the new balance of token a using the constant product formula
+                let amount_a_new = adjusted_token_balance_a + adjusted_amount;
+                // Calculate the new balance of token b using the constant product formula
+                let amount_b_new = (adjusted_token_balance_a * adjusted_token_balance_b) / amount_a_new;
+                // We then need to transfer the decimal places to the LP token amount
+                ((amount_b_new * 10f64.powi(9)) as u64).min(token_balance_b)
+            }
+        }
     }
 }
 
@@ -535,5 +553,14 @@ mod tests {
         let amount = 100;
         let amount_b = LiquidityPool::calculate_swap(token_balance_a, token_balance_b, amount);
         assert_eq!(amount_b, 36, "Should swap 71.04 ~71 token B");
+    }
+
+    #[test]
+    fn test_calculate_token_swap_amount_large_numbers() {
+        let token_balance_a = 1000 * 10u64.pow(9);
+        let token_balance_b = 1000 * 10u64.pow(9);
+        let amount = 100 * 10u64.pow(9);
+        let amount_b = LiquidityPool::calculate_swap(token_balance_a, token_balance_b, amount);
+        assert_eq!(amount_b, 909090909090, "Should swap large number of token B");
     }
 }
