@@ -75,6 +75,20 @@ pub mod digital_nomad_exchange {
 
         Ok(())
     }
+
+    // TODO
+    // pub fn swap_tokens(ctx: Context<SwapTokens>, token, amount: u64) -> Result<()> {
+    //     // Transfer tokens from user to pool
+    //     token::transfer(ctx.accounts.into_transfer_from_pool_a_context(), amount)?;
+    //
+    //     // Calculate amount to transfer for token B
+    //     let amount_b = amount;
+    //
+    //     // Transfer tokens to user
+    //     token::transfer(ctx.accounts.into_transfer_from_pool_b_context(), amount_b)?;
+    //
+    //     Ok(())
+    // }
 }
 
 // fn calculate_lp_token_amount_for_add_liquidity(amount_a: u64, amount_b: u64) -> Result<u64> {
@@ -152,6 +166,16 @@ impl LiquidityPool {
         let amount_a = (token_a_balance as f64 * lp_ratio) as u64;
         let amount_b = (token_b_balance as f64 * lp_ratio) as u64;
         (amount_a, amount_b)
+    }
+
+    fn calculate_swap(token_balance_a: u64, token_balance_b: u64, amount: u64) -> u64 {
+        // Calculate the amount of tokens to swap
+        // Add token balance a and amount to get the updated affect on the pool
+        let amount_a_new = token_balance_a + amount;
+        // Calculate the new balance of token b using the constant product formula
+        let amount_b_new = (token_balance_a * token_balance_b) / amount_a_new;
+        // Return the difference between the old and new balance of token b
+        token_balance_b - amount_b_new
     }
 }
 
@@ -493,5 +517,14 @@ mod tests {
         let (amount_a, amount_b) = LiquidityPool::calculate_token_amount_to_remove(lp_token_amount, lp_token_supply, token_a_balance, token_b_balance);
         assert_eq!(amount_a, 100 * 10u64.pow(9), "Should withdraw 100 token A");
         assert_eq!(amount_b, 100 * 10u64.pow(9), "Should withdraw 100 token B");
+    }
+
+    #[test]
+    fn test_calculate_token_swap_amount() {
+        let token_balance_a = 1000;
+        let token_balance_b = 1000;
+        let amount = 100;
+        let amount_b = LiquidityPool::calculate_swap(token_balance_a, token_balance_b, amount);
+        assert_eq!(amount_b, 91, "Should swap 90.909 ~91 token B");
     }
 }
