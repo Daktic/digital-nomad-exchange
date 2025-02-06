@@ -95,10 +95,6 @@ pub mod digital_nomad_exchange {
     }
 }
 
-// fn calculate_lp_token_amount_for_add_liquidity(amount_a: u64, amount_b: u64) -> Result<u64> {
-//     // Calculate the amount of LP tokens to mint
-//     amount_a + amount_b
-// }
 
 
 
