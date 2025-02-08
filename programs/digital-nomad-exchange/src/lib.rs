@@ -75,12 +75,26 @@ pub mod digital_nomad_exchange {
 
         Ok(())
     }
+
+    pub fn swap_tokens(ctx: Context<SwapTokens>, amount: u64) -> Result<()> {
+
+        // Calculate amount to transfer for token B
+        let amount_b = LiquidityPool::calculate_swap(
+            ctx.accounts.lp_token_a.amount,
+            ctx.accounts.lp_token_b.amount,
+            amount
+        );
+
+        // Transfer tokens from user to pool
+        token::transfer(ctx.accounts.into_transfer_from_user_to_pool_a_context(), amount)?;
+
+        // Transfer tokens to user
+        token::transfer(ctx.accounts.into_transfer_from_pool_b_to_user_context(), amount_b)?;
+
+        Ok(())
+    }
 }
 
-// fn calculate_lp_token_amount_for_add_liquidity(amount_a: u64, amount_b: u64) -> Result<u64> {
-//     // Calculate the amount of LP tokens to mint
-//     amount_a + amount_b
-// }
 
 
 
@@ -152,6 +166,34 @@ impl LiquidityPool {
         let amount_a = (token_a_balance as f64 * lp_ratio) as u64;
         let amount_b = (token_b_balance as f64 * lp_ratio) as u64;
         (amount_a, amount_b)
+    }
+
+    fn calculate_swap(token_balance_a: u64, token_balance_b: u64, amount: u64) -> u64 {
+        // Calculate the amount of tokens to swap
+        // Add token balance a and amount to get the updated affect on the pool
+        // Check if overflow
+        match token_balance_a.checked_mul(token_balance_b) {
+            Some(product) => {
+                // Calculate the new balance of token a using the constant product formula
+                let amount_a_new = token_balance_a + amount;
+                // Calculate the new balance of token b using the constant product formula
+                let amount_b_new = (product / amount_a_new).min(token_balance_b);
+                // Return the difference between the old and new balance of token b
+                token_balance_b - amount_b_new
+            },
+            None => {
+                // Overflow, use the decimals to re multiply
+                let adjusted_token_balance_a = token_balance_a as f64 / 10f64.powi(9);
+                let adjusted_token_balance_b = token_balance_b as f64 / 10f64.powi(9);
+                let adjusted_amount = amount as f64 / 10f64.powi(9);
+                // Calculate the new balance of token a using the constant product formula
+                let amount_a_new = adjusted_token_balance_a + adjusted_amount;
+                // Calculate the new balance of token b using the constant product formula
+                let amount_b_new = (adjusted_token_balance_a * adjusted_token_balance_b) / amount_a_new;
+                // We then need to transfer the decimal places to the LP token amount
+                ((amount_b_new * 10f64.powi(9)) as u64).min(token_balance_b)
+            }
+        }
     }
 }
 
@@ -274,6 +316,52 @@ impl<'info>RemoveLiquidity<'info> {
             mint: self.lp_token.to_account_info(),
             from: self.user_lp_token_account.to_account_info(),
             authority: self.user.to_account_info(),
+        };
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+
+// The swap tokens context is the main purpose of the liquidity pool.
+// It will swap tokens in the pool on a dynamic ratio.
+// It will take a fee for the swap that is splits amongst the liquidity providers
+#[derive(Accounts)]
+pub struct SwapTokens<'info> {
+    #[account(mut, signer)]
+    pub liquidity_pool: Account<'info, LiquidityPool>,
+    pub mint_a: Account<'info, Mint>,
+    #[account(mut)]
+    pub user_token_a: Account<'info, TokenAccount>,
+    pub mint_b: Account<'info, Mint>,
+    #[account(mut)]
+    pub user_token_b: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub lp_token_a: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub lp_token_b: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub lp_token: Account<'info, Mint>,
+    #[account(mut, signer)]
+    pub user: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
+impl<'info>SwapTokens<'info> {
+    fn into_transfer_from_user_to_pool_a_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.user_token_a.to_account_info(),
+            to: self.lp_token_a.to_account_info(),
+            authority: self.user.to_account_info(),
+        };
+        let cpi_program = self.token_program.to_account_info();
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+
+    fn into_transfer_from_pool_b_to_user_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.lp_token_b.to_account_info(),
+            to: self.user_token_b.to_account_info(),
+            authority: self.liquidity_pool.to_account_info()
         };
         let cpi_program = self.token_program.to_account_info();
         CpiContext::new(cpi_program, cpi_accounts)
@@ -447,5 +535,32 @@ mod tests {
         let (amount_a, amount_b) = LiquidityPool::calculate_token_amount_to_remove(lp_token_amount, lp_token_supply, token_a_balance, token_b_balance);
         assert_eq!(amount_a, 100 * 10u64.pow(9), "Should withdraw 100 token A");
         assert_eq!(amount_b, 100 * 10u64.pow(9), "Should withdraw 100 token B");
+    }
+
+    #[test]
+    fn test_calculate_token_swap_amount() {
+        let token_balance_a = 1000;
+        let token_balance_b = 1000;
+        let amount = 100;
+        let amount_b = LiquidityPool::calculate_swap(token_balance_a, token_balance_b, amount);
+        assert_eq!(amount_b, 91, "Should swap 90.909 ~91 token B");
+    }
+
+    #[test]
+    fn test_calculate_token_swap_amount_unequal_pool() {
+        let token_balance_a = 34556;
+        let token_balance_b = 12345;
+        let amount = 100;
+        let amount_b = LiquidityPool::calculate_swap(token_balance_a, token_balance_b, amount);
+        assert_eq!(amount_b, 36, "Should swap 71.04 ~71 token B");
+    }
+
+    #[test]
+    fn test_calculate_token_swap_amount_large_numbers() {
+        let token_balance_a = 1000 * 10u64.pow(9);
+        let token_balance_b = 1000 * 10u64.pow(9);
+        let amount = 100 * 10u64.pow(9);
+        let amount_b = LiquidityPool::calculate_swap(token_balance_a, token_balance_b, amount);
+        assert_eq!(amount_b, 909090909090, "Should swap large number of token B");
     }
 }
