@@ -464,6 +464,38 @@ describe("digital-nomad-exchange", () => {
         console.log(`Expected Token Balance: ${expectedTokenBalance}`);
         assert.equal(BigInt(tokenBAccountInfo.amount), expectedTokenBalance, "Token balance B is incorrect");
 
+        // Swap in reverse order
+        await program.methods.swapTokens(new anchor.BN(amount_to_swap))
+            .accounts({
+                liquidityPool: liquidityPool.publicKey,
+                // This will be flipped so that token B is swapped for token A
+                mintA: tokenB,
+                userTokenA: userTokenAccountB.address,
+                mintB: tokenA,
+                userTokenB: userTokenAccountA.address,
+                lpTokenA: lpTokenAccountB.address,
+                lpTokenB: lpTokenAccountA.address,
+                lpToken: lpToken,
+                user: user_account.publicKey,
+            })
+            .signers([user_account, liquidityPool])
+            .rpc();
+
+        // Fetch the token account information
+        const flippedTokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
+        const flippedTokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
+
+        const newBalanceBFlipped = newBalanceB + BigInt(amount_to_swap);
+        const newBalanceAFlipped = (newBalanceB * newBalanceA) / newBalanceBFlipped;
+        const expectedSwapAmountFlipped = newBalanceA - newBalanceAFlipped;
+
+        const expectedTokenBBalanceFlipped = expectedTokenBalance - BigInt(amount_to_swap);
+        const expectedTokenABalanceFlipped = BigInt(amount_to_mint) - BigInt(amount_to_send_a) - BigInt(amount_to_swap) + expectedSwapAmountFlipped;
+
+        assert.equal(flippedTokenBAccountInfo.amount, expectedTokenBBalanceFlipped, "Token balance B is incorrect");
+        assert.equal(flippedTokenAAccountInfo.amount, expectedTokenABalanceFlipped, "Token balance A is incorrect");
+
+
     });
 
     it('Can\'t swap arbitrary tokens', async () => {
