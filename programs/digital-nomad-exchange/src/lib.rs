@@ -552,7 +552,7 @@ mod tests {
         let token_balance_b = 12345;
         let amount = 100;
         let amount_b = LiquidityPool::calculate_swap(token_balance_a, token_balance_b, amount);
-        assert_eq!(amount_b, 36, "Should swap 71.04 ~71 token B");
+        assert_eq!(amount_b, 36, "Should swap 36.04 ~36 token B");
     }
 
     #[test]
