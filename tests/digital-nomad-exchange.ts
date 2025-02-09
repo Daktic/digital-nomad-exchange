@@ -498,7 +498,7 @@ describe("digital-nomad-exchange", () => {
 
     });
 
-    it('Can\'t swap arbitrary tokens', async () => {
+    it("Can't swap arbitrary tokens", async () => {
 
         const amount_to_send_a = 1_000_000_000;
         const amount_to_send_b = 500_000_000;
