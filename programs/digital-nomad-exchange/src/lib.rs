@@ -10,7 +10,7 @@ pub mod digital_nomad_exchange {
     // First we initialize the program with the program context.
     // This is the entry point for the program.
     // It will create a new Liquidity Pool account and mint LP tokens to the user.
-    pub fn initialize(ctx: Context<CreateLiquidityPool>) -> Result<()> {
+    pub fn initialize(ctx: Context<CreateLiquidityPool>, bump: u8) -> Result<()> {
         let liquidity_pool = &mut ctx.accounts.liquidity_pool;
         // Initialize the liquidity pool account
         liquidity_pool.token_a = ctx.accounts.token_a.key();
@@ -201,7 +201,13 @@ impl LiquidityPool {
 // It contains the liquidity pool account, the two token accounts, the LP token mint, the user account, the system program and the rent sysvar.
 #[derive(Accounts)]
 pub struct CreateLiquidityPool<'info> {
-    #[account(init, payer = user, space = 8 + 32 + 32 + 32 + 32)]
+    #[account(
+        init,
+        payer = user,
+        space = 8 + 32 + 32 + 32 + 32,
+        seeds = [b"liquidity_pool", token_a.key().as_ref(), token_b.key().as_ref()],
+        bump
+    )]
     pub liquidity_pool: Account<'info, LiquidityPool>,
     pub token_a: Account<'info, TokenAccount>,
     pub token_b: Account<'info, TokenAccount>,
