@@ -1,7 +1,14 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { DigitalNomadExchange } from "../target/types/digital_nomad_exchange";
-import {Account, createMint, getAccount, getOrCreateAssociatedTokenAccount, mintTo} from "@solana/spl-token";
+import {
+    Account, createInitializeAccountInstruction,
+    createMint,
+    getAccount,
+    getOrCreateAssociatedTokenAccount,
+    mintTo,
+    TOKEN_PROGRAM_ID
+} from "@solana/spl-token";
 import {beforeEach} from "mocha";
 import * as assert from "node:assert";
 
@@ -183,6 +190,37 @@ describe("digital-nomad-exchange", () => {
             lpToken,
             user_account.publicKey
         );
+
+        // Create a fake token C account for testing
+        const lpTokenCKeypair = anchor.web3.Keypair.generate();
+        const ACCOUNT_SIZE = 165; // bytes for a token account
+        const lamportsForRent = await provider.connection.getMinimumBalanceForRentExemption(
+            ACCOUNT_SIZE
+        );
+
+        const createAccountIx = anchor.web3.SystemProgram.createAccount({
+            fromPubkey: user_account.publicKey,
+            newAccountPubkey: lpTokenCKeypair.publicKey,
+            space: ACCOUNT_SIZE,
+            lamports: lamportsForRent,
+            programId: TOKEN_PROGRAM_ID,
+        });
+
+        const initAccountIx = createInitializeAccountInstruction(
+            lpTokenCKeypair.publicKey,
+            tokenC,
+            liquidityPoolPda,
+            TOKEN_PROGRAM_ID
+        );
+
+        const tx = new anchor.web3.Transaction()
+            .add(createAccountIx)
+            .add(initAccountIx);
+
+        await provider.sendAndConfirm(tx, [user_account, lpTokenCKeypair]);
+
+        lpTokenAccountC = lpTokenCKeypair.publicKey;
+
     })
 
     it("Is initialized!", async () => {
@@ -271,6 +309,7 @@ describe("digital-nomad-exchange", () => {
             .rpc();
 
         // Add arbitrary token
+        let threwError = false;
         try {
             await program.methods.addLiquidity(new anchor.BN(amount_to_send_c), new anchor.BN(amount_to_send_c), bump)
                 .accounts({
@@ -289,22 +328,22 @@ describe("digital-nomad-exchange", () => {
                 .rpc();
         } catch(err) {
             // should throw error
-            assert.ifError(err);
-
-            // Fetch the token account information
-            const userTokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
-            const userTokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
-            const userTokenCAccountInfo = await getAccount(provider.connection, userTokenAccountC.address);
-
-            // Log anc check the balances
-            console.log(`User Token A Balance: ${userTokenAAccountInfo.amount}`);
-            assert.equal(userTokenAAccountInfo.amount, amount_to_mint-amount_to_send_a, "Token A balance should be same after attempting adding fraudulent liquidity");
-            console.log(`User Token B Balance: ${userTokenBAccountInfo.amount}`);
-            assert.equal(userTokenBAccountInfo.amount, amount_to_mint-amount_to_send_b, "Token A balance should be same after attempting adding fraudulent liquidity");
-            console.log(`User Token C Balance: ${userTokenCAccountInfo.amount}`);
-            assert.equal(userTokenCAccountInfo.amount, amount_to_mint, "Token A balance should be same after attempting adding fraudulent liquidity");
-
+            threwError = true;
         }
+        assert.equal(threwError, true, "Should throw error when adding arbitrary token to liquidity pool");
+
+        // Fetch the token account information
+        const userTokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
+        const userTokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
+        const userTokenCAccountInfo = await getAccount(provider.connection, userTokenAccountC.address);
+
+        // Log anc check the balances
+        console.log(`User Token A Balance: ${userTokenAAccountInfo.amount}`);
+        assert.equal(userTokenAAccountInfo.amount, amount_to_mint-amount_to_send_a, "Token A balance should be same after attempting adding fraudulent liquidity");
+        console.log(`User Token B Balance: ${userTokenBAccountInfo.amount}`);
+        assert.equal(userTokenBAccountInfo.amount, amount_to_mint-amount_to_send_b, "Token A balance should be same after attempting adding fraudulent liquidity");
+        console.log(`User Token C Balance: ${userTokenCAccountInfo.amount}`);
+        assert.equal(userTokenCAccountInfo.amount, amount_to_mint, "Token A balance should be same after attempting adding fraudulent liquidity");
 
 
 
