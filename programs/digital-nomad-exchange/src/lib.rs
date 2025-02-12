@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Mint, MintTo, Token, TokenAccount, Transfer};
+use anchor_spl::token::spl_token;
+
 
 declare_id!("D4JCMSe8bh1GcuPyGjicJ4JbdcmWmAPLvcuDqgpVSWFB");
 
@@ -16,6 +18,8 @@ pub mod digital_nomad_exchange {
         liquidity_pool.token_a = ctx.accounts.token_a_mint.key();
         liquidity_pool.token_b = ctx.accounts.token_b_mint.key();
         liquidity_pool.lp_token = ctx.accounts.lp_token.key();
+        liquidity_pool.lp_token_a = ctx.accounts.lp_token_a.key();
+        liquidity_pool.lp_token_b = ctx.accounts.lp_token_b.key();
         liquidity_pool.owner = ctx.accounts.user.key();
         Ok(())
     }
@@ -108,6 +112,8 @@ pub mod digital_nomad_exchange {
 pub struct LiquidityPool {
     pub token_a: Pubkey,
     pub token_b: Pubkey,
+    pub lp_token_a: Pubkey,
+    pub lp_token_b: Pubkey,
     pub lp_token: Pubkey,
     pub owner: Pubkey,
 }
@@ -215,8 +221,32 @@ pub struct CreateLiquidityPool<'info> {
     pub token_a_mint: Account<'info, Mint>,
     pub token_b_mint: Account<'info, Mint>,
     pub lp_token: Account<'info, Mint>,
+    // Need to initialize the token accounts for the PDA
+    // Create the pool's token-account for token A
+    #[account(
+        init,
+        payer = user,
+        token::mint = token_a_mint,
+        token::authority = liquidity_pool,
+        seeds = [b"pool_token_a", token_a_mint.key().as_ref()],
+        bump
+    )]
+    pub lp_token_a: Account<'info, TokenAccount>,
+
+    // Create the pool's token-account for token B
+    #[account(
+        init,
+        payer = user,
+        token::mint = token_b_mint,
+        token::authority = liquidity_pool,
+        seeds = [b"pool_token_a", token_a_mint.key().as_ref()],
+        bump
+    )]
+    pub lp_token_b: Account<'info, TokenAccount>,
     #[account(mut)]
     pub user: Signer<'info>,
+    #[account(address = spl_token::ID)]
+    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>
 }
