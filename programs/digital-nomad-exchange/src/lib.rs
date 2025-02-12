@@ -239,7 +239,7 @@ pub struct CreateLiquidityPool<'info> {
         payer = user,
         token::mint = token_b_mint,
         token::authority = liquidity_pool,
-        seeds = [b"pool_token_a", token_a_mint.key().as_ref()],
+        seeds = [b"pool_token_b", token_a_mint.key().as_ref()],
         bump
     )]
     pub lp_token_b: Account<'info, TokenAccount>,
