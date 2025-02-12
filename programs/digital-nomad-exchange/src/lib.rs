@@ -213,7 +213,7 @@ pub struct CreateLiquidityPool<'info> {
     #[account(
         init,
         payer = user,
-        space = 8 + 32 + 32 + 32 + 32,
+        space = 8 + (6 * 32),
         seeds = [b"liquidity_pool", token_a_mint.key().as_ref(), token_b_mint.key().as_ref()],
         bump
     )]
