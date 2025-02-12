@@ -82,9 +82,6 @@ pub mod digital_nomad_exchange {
 
     pub fn swap_tokens(ctx: Context<SwapTokens>, amount: u64, bump: u8) -> Result<()> {
 
-        let mint_a = ctx.accounts.mint_a.key();
-        let mint_b = ctx.accounts.mint_b.key();
-
         // Calculate amount to transfer for token B
         let amount_b = LiquidityPool::calculate_swap(
             ctx.accounts.lp_token_a.amount,
@@ -202,6 +199,14 @@ impl LiquidityPool {
                 // We then need to transfer the decimal places to the LP token amount
                 ((amount_b_new * 10f64.powi(9)) as u64).min(token_balance_b)
             }
+        }
+    }
+
+    fn sort_pubkeys(pubkey_a: Pubkey, pubkey_b: Pubkey) -> (Pubkey, Pubkey) {
+        if pubkey_a < pubkey_b {
+            (pubkey_a, pubkey_b)
+        } else {
+            (pubkey_b, pubkey_a)
         }
     }
 }
@@ -482,7 +487,7 @@ impl<'info>SwapTokens<'info> {
             from: self.user_token_a.to_account_info(),
             to: self.lp_token_a.to_account_info(),
             // This field means “the address that must sign the token::transfer”
-            authority: self.liquidity_pool.to_account_info(),
+            authority: self.user.to_account_info(),
         };
 
         // Build the seeds array to match how your LiquidityPool PDA was derived
@@ -515,7 +520,6 @@ impl<'info>SwapTokens<'info> {
             // This field means “the address that must sign the token::transfer”
             authority: self.liquidity_pool.to_account_info(),
         };
-        let cpi_program = self.token_program.to_account_info();
 
         // Build the seeds array to match how your LiquidityPool PDA was derived
         let seeds = &[
