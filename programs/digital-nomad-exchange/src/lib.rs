@@ -23,10 +23,10 @@ pub mod digital_nomad_exchange {
     // The add_liquidity function will add liquidity to the pool.
     // It will transfer the token A and B from the user to the pool.
     // It will mint LP tokens to the user.
-    pub fn add_liquidity(ctx: Context<AddLiquidity>, amount_a: u64, amount_b: u64) -> Result<()> {
+    pub fn add_liquidity(ctx: Context<AddLiquidity>, amount_a: u64, amount_b: u64, bump: u8) -> Result<()> {
         // Transfer tokens from user to pool
-        token::transfer(ctx.accounts.into_transfer_to_pool_a_context(), amount_a)?;
-        token::transfer(ctx.accounts.into_transfer_to_pool_b_context(), amount_b)?;
+        ctx.accounts.transfer_to_pool_a(bump, amount_a)?;
+        ctx.accounts.transfer_to_pool_b(bump, amount_b)?;
 
         // Create Mint LP transaction
         let cpi_accounts = MintTo {
@@ -57,9 +57,9 @@ pub mod digital_nomad_exchange {
         Ok(())
     }
 
-    pub fn remove_liquidity(ctx: Context<RemoveLiquidity>, amount: u64) -> Result<()> {
+    pub fn remove_liquidity(ctx: Context<RemoveLiquidity>, amount: u64, bump:u8) -> Result<()> {
         // Burn LP tokens from user
-        token::burn(ctx.accounts.into_burn_context(), amount)?;
+        ctx.accounts.burn(bump, amount)?;
 
         // Calculate amount to transfer for each token
         let (amount_a, amount_b) = LiquidityPool::calculate_token_amount_to_remove(
@@ -70,8 +70,8 @@ pub mod digital_nomad_exchange {
         );
 
         // Transfer tokens to user
-        token::transfer(ctx.accounts.into_transfer_from_pool_a_context(), amount_a)?;
-        token::transfer(ctx.accounts.into_transfer_from_pool_b_context(), amount_b)?;
+        ctx.accounts.transfer_from_pool_a(bump, amount_a)?;
+        ctx.accounts.transfer_from_pool_b(bump, amount_b)?;
 
         Ok(())
     }
@@ -224,7 +224,11 @@ pub struct CreateLiquidityPool<'info> {
 // The context for the add_liquidity function.
 #[derive(Accounts)]
 pub struct AddLiquidity<'info> {
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"liquidity_pool", mint_a.key().as_ref(), mint_b.key().as_ref()],
+        bump,
+    )]
     pub liquidity_pool: Account<'info, LiquidityPool>,
     pub mint_a: Account<'info, Mint>,
     #[account(mut)]
@@ -250,31 +254,65 @@ pub struct AddLiquidity<'info> {
 // The function will transfer the token A and B from the user to the pool.
 // It will mint LP tokens to the user.
 impl<'info> AddLiquidity<'info> {
-    fn into_transfer_to_pool_a_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+    fn transfer_to_pool_a(&self, bump:u8, amount: u64) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self.user_token_a.to_account_info(),
             to: self.lp_token_a.to_account_info(),
             authority: self.user.to_account_info(),
         };
-        let cpi_program = self.token_program.to_account_info();
-        CpiContext::new(cpi_program, cpi_accounts)
+        // Build the seeds array to match how your LiquidityPool PDA was derived
+        let seeds = &[
+            b"liquidity_pool",
+            self.liquidity_pool.token_a.as_ref(), // or however you stored it
+            self.liquidity_pool.token_b.as_ref(), // or however you stored it
+            &[bump],
+        ];
+        let signer_seeds = &[&seeds[..]];
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                cpi_accounts,
+                signer_seeds
+            ),
+            amount
+        )
     }
 
-    fn into_transfer_to_pool_b_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+    fn transfer_to_pool_b(&self, bump:u8, amount: u64) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self.user_token_b.to_account_info(),
             to: self.lp_token_b.to_account_info(),
             authority: self.user.to_account_info(),
         };
-        let cpi_program = self.token_program.to_account_info();
-        CpiContext::new(cpi_program, cpi_accounts)
+        // Build the seeds array to match how your LiquidityPool PDA was derived
+        let seeds = &[
+            b"liquidity_pool",
+            self.liquidity_pool.token_a.as_ref(), // or however you stored it
+            self.liquidity_pool.token_b.as_ref(), // or however you stored it
+            &[bump],
+        ];
+        let signer_seeds = &[&seeds[..]];
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                cpi_accounts,
+                signer_seeds
+            ),
+            amount
+        )
     }
 }
 
 // The context for removing liquidity from the pool
 #[derive(Accounts)]
 pub struct RemoveLiquidity<'info> {
-    #[account(mut, signer)]
+    #[account(
+        mut,
+        seeds = [b"liquidity_pool", mint_a.key().as_ref(), mint_b.key().as_ref()],
+        bump,
+    )]
     pub liquidity_pool: Account<'info, LiquidityPool>,
     pub mint_a: Account<'info, Mint>,
     #[account(mut)]
@@ -300,34 +338,79 @@ pub struct RemoveLiquidity<'info> {
 // The function will burn the LP tokens from the user.
 // It will transfer token A and B to the user proportional to the pools reserves.
 impl<'info>RemoveLiquidity<'info> {
-    fn into_transfer_from_pool_a_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+    fn transfer_from_pool_a(&self, bump:u8, amount: u64) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self.lp_token_a.to_account_info(),
             to: self.user_token_a.to_account_info(),
             authority: self.liquidity_pool.to_account_info(),
         };
-        let cpi_program = self.token_program.to_account_info();
-        CpiContext::new(cpi_program, cpi_accounts)
+        // Build the seeds array to match how your LiquidityPool PDA was derived
+        let seeds = &[
+            b"liquidity_pool",
+            self.liquidity_pool.token_a.as_ref(), // or however you stored it
+            self.liquidity_pool.token_b.as_ref(), // or however you stored it
+            &[bump],
+        ];
+        let signer_seeds = &[&seeds[..]];
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                cpi_accounts,
+                signer_seeds
+            ),
+            amount
+        )
     }
 
-    fn into_transfer_from_pool_b_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+    fn transfer_from_pool_b(&self, bump:u8, amount: u64) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self.lp_token_b.to_account_info(),
             to: self.user_token_b.to_account_info(),
             authority: self.liquidity_pool.to_account_info()
         };
-        let cpi_program = self.token_program.to_account_info();
-        CpiContext::new(cpi_program, cpi_accounts)
+        // Build the seeds array to match how your LiquidityPool PDA was derived
+        let seeds = &[
+            b"liquidity_pool",
+            self.liquidity_pool.token_a.as_ref(), // or however you stored it
+            self.liquidity_pool.token_b.as_ref(), // or however you stored it
+            &[bump],
+        ];
+        let signer_seeds = &[&seeds[..]];
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                cpi_accounts,
+                signer_seeds
+            ),
+            amount
+        )
     }
 
-    fn into_burn_context(&self) -> CpiContext<'_, '_, '_, 'info, Burn<'info>> {
+    fn burn(&self, bump:u8, amount: u64) -> Result<()> {
         let cpi_accounts = Burn {
             mint: self.lp_token.to_account_info(),
             from: self.user_lp_token_account.to_account_info(),
             authority: self.user.to_account_info(),
         };
-        let cpi_program = self.token_program.to_account_info();
-        CpiContext::new(cpi_program, cpi_accounts)
+        // Build the seeds array to match how your LiquidityPool PDA was derived
+        let seeds = &[
+            b"liquidity_pool",
+            self.liquidity_pool.token_a.as_ref(), // or however you stored it
+            self.liquidity_pool.token_b.as_ref(), // or however you stored it
+            &[bump],
+        ];
+        let signer_seeds = &[&seeds[..]];
+
+        token::burn(
+            CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                cpi_accounts,
+                signer_seeds
+            ),
+            amount
+        )
     }
 }
 
@@ -371,7 +454,6 @@ impl<'info>SwapTokens<'info> {
             // This field means “the address that must sign the token::transfer”
             authority: self.liquidity_pool.to_account_info(),
         };
-        let cpi_program = self.token_program.to_account_info();
 
         // Build the seeds array to match how your LiquidityPool PDA was derived
         let seeds = &[

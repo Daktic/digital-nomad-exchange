@@ -212,7 +212,7 @@ describe("digital-nomad-exchange", () => {
         // The user will supply a 1:1 ratio of both tokens, each with 9 decimals
         // The anchor.BN is used to create a new Big Number instance
         const amount_to_send = amount_to_mint;
-        await program.methods.addLiquidity(new anchor.BN(amount_to_send), new anchor.BN(amount_to_send))
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send), new anchor.BN(amount_to_send), bump)
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
@@ -259,7 +259,7 @@ describe("digital-nomad-exchange", () => {
         const amount_to_send_a = 1_000_000_000;
         const amount_to_send_b = 500_000_000;
         const amount_to_send_c = 87_654_321
-        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b), bump)
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
@@ -277,7 +277,7 @@ describe("digital-nomad-exchange", () => {
 
         // Add arbitrary token
         try {
-            await program.methods.addLiquidity(new anchor.BN(amount_to_send_c), new anchor.BN(amount_to_send_c))
+            await program.methods.addLiquidity(new anchor.BN(amount_to_send_c), new anchor.BN(amount_to_send_c), bump)
                 .accounts({
                     liquidityPool: liquidityPoolPda,
                     mintA: tokenC,
@@ -321,7 +321,7 @@ describe("digital-nomad-exchange", () => {
         const amount_to_send_b = 500_000_000;
 
         // Call the addLiquidity function on the program with two different amounts
-        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b), bump)
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
@@ -366,7 +366,7 @@ describe("digital-nomad-exchange", () => {
         const amount_to_send_b = 500_000_000;
 
         // Add some tokens to the liquidity pool
-        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b), bump)
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
@@ -387,7 +387,7 @@ describe("digital-nomad-exchange", () => {
 
         // remove 50% of the liquidity
         const amount_to_remove = Math.floor(Number(current_lp_balance.amount / BigInt(2)))
-        await program.methods.removeLiquidity(new anchor.BN(amount_to_remove))
+        await program.methods.removeLiquidity(new anchor.BN(amount_to_remove), bump)
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
@@ -425,7 +425,7 @@ describe("digital-nomad-exchange", () => {
         const amount_to_send_b = 500_000_000;
 
         // Add some tokens to the liquidity pool
-        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b), bump)
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
@@ -443,7 +443,7 @@ describe("digital-nomad-exchange", () => {
 
         // Swap tokens
         const amount_to_swap = 100_000;
-        await program.methods.swapTokens(new anchor.BN(amount_to_swap))
+        await program.methods.swapTokens(new anchor.BN(amount_to_swap), bump)
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 // This will be standard so that token A is swapped for token b
@@ -456,7 +456,7 @@ describe("digital-nomad-exchange", () => {
                 lpToken: lpToken,
                 user: user_account.publicKey,
             })
-            .signers([user_account, liquidityPool])
+            .signers([user_account])
             .rpc();
 
         // Fetch the token account information
@@ -479,7 +479,7 @@ describe("digital-nomad-exchange", () => {
         assert.equal(BigInt(tokenBAccountInfo.amount), expectedTokenBalance, "Token balance B is incorrect");
 
         // Swap in reverse order
-        await program.methods.swapTokens(new anchor.BN(amount_to_swap))
+        await program.methods.swapTokens(new anchor.BN(amount_to_swap), bump)
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 // This will be flipped so that token B is swapped for token A
@@ -521,7 +521,7 @@ describe("digital-nomad-exchange", () => {
         console.log(`User Token B Balance 1: ${userTokenBAccountInfo.amount}`);
 
         // Add some tokens to the liquidity pool
-        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b), bump)
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
@@ -551,7 +551,7 @@ describe("digital-nomad-exchange", () => {
         // Swap Arbitrary tokens
         try {
             const amount_to_swap = 534_321;
-            await program.methods.swapTokens(new anchor.BN(amount_to_swap))
+            await program.methods.swapTokens(new anchor.BN(amount_to_swap), bump)
                 .accounts({
                     liquidityPool: liquidityPoolPda,
                     // This will be standard so that token A is swapped for token b
