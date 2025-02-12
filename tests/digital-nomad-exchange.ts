@@ -434,7 +434,7 @@ describe("digital-nomad-exchange", () => {
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
             })
-            .signers([user_account, liquidityPool])
+            .signers([user_account])
             .rpc();
 
 
