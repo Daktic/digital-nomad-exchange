@@ -80,12 +80,6 @@ pub mod digital_nomad_exchange {
 
         let mint_a = ctx.accounts.mint_a.key();
         let mint_b = ctx.accounts.mint_b.key();
-        let pool_seeds = &[
-            b"liquidity_pool".as_ref(),
-            mint_a.as_ref(),
-            mint_b.as_ref(),
-            &[bump]
-        ];
 
         // Calculate amount to transfer for token B
         let amount_b = LiquidityPool::calculate_swap(
@@ -95,10 +89,10 @@ pub mod digital_nomad_exchange {
         );
 
         // Transfer tokens from user to pool
-        token::transfer(ctx.accounts.into_transfer_from_user_to_pool_a_context(pool_seeds), amount)?;
+        ctx.accounts.transfer_from_user_to_pool_a(bump, amount)?;
 
         // Transfer tokens to user
-        token::transfer(ctx.accounts.into_transfer_from_pool_b_to_user_context(pool_seeds), amount_b)?;
+        ctx.accounts.transfer_from_pool_b_to_user(bump, amount_b)?;
 
         Ok(())
     }
@@ -342,7 +336,11 @@ impl<'info>RemoveLiquidity<'info> {
 // It will take a fee for the swap that is splits amongst the liquidity providers
 #[derive(Accounts)]
 pub struct SwapTokens<'info> {
-    #[account(mut, signer)]
+    #[account(
+        mut,
+        seeds = [b"liquidity_pool", mint_a.key().as_ref(), mint_b.key().as_ref()],
+        bump,
+    )]
     pub liquidity_pool: Account<'info, LiquidityPool>,
     pub mint_a: Account<'info, Mint>,
     #[account(mut)]
@@ -362,24 +360,68 @@ pub struct SwapTokens<'info> {
 }
 
 impl<'info>SwapTokens<'info> {
-    fn into_transfer_from_user_to_pool_a_context<>(&self, seeds: &[&[u8]],) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+    fn transfer_from_user_to_pool_a(
+        &self,
+        bump: u8,
+        amount:u64
+    ) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self.user_token_a.to_account_info(),
             to: self.lp_token_a.to_account_info(),
+            // This field means “the address that must sign the token::transfer”
             authority: self.liquidity_pool.to_account_info(),
         };
         let cpi_program = self.token_program.to_account_info();
-        CpiContext::new_with_signer(cpi_program, cpi_accounts, &[seeds])
+
+        // Build the seeds array to match how your LiquidityPool PDA was derived
+        let seeds = &[
+            b"liquidity_pool",
+            self.liquidity_pool.token_a.as_ref(), // or however you stored it
+            self.liquidity_pool.token_b.as_ref(), // or however you stored it
+            &[bump],
+        ];
+        let signer_seeds = &[&seeds[..]];
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                cpi_accounts,
+                signer_seeds
+            ),
+            amount
+        )
     }
 
-    fn into_transfer_from_pool_b_to_user_context(&self, seeds: &[&[u8]],) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+    fn transfer_from_pool_b_to_user(
+        &self,
+        bump: u8,
+        amount: u64
+    ) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self.lp_token_b.to_account_info(),
             to: self.user_token_b.to_account_info(),
-            authority: self.liquidity_pool.to_account_info()
+            // This field means “the address that must sign the token::transfer”
+            authority: self.liquidity_pool.to_account_info(),
         };
         let cpi_program = self.token_program.to_account_info();
-        CpiContext::new_with_signer(cpi_program, cpi_accounts, &[seeds])
+
+        // Build the seeds array to match how your LiquidityPool PDA was derived
+        let seeds = &[
+            b"liquidity_pool",
+            self.liquidity_pool.token_a.as_ref(), // or however you stored it
+            self.liquidity_pool.token_b.as_ref(), // or however you stored it
+            &[bump],
+        ];
+        let signer_seeds = &[&seeds[..]];
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                cpi_accounts,
+                signer_seeds
+            ),
+            amount
+        )
     }
 }
 
