@@ -490,11 +490,12 @@ impl<'info>SwapTokens<'info> {
             authority: self.user.to_account_info(),
         };
 
-        // Build the seeds array to match how your LiquidityPool PDA was derived
+        let (token_a, token_b) = LiquidityPool::sort_pubkeys(self.liquidity_pool.token_a, self.liquidity_pool.token_b);
+        // Build the seeds array to match how LiquidityPool PDA was derived
         let seeds = &[
             b"liquidity_pool",
-            self.liquidity_pool.token_a.as_ref(), // or however you stored it
-            self.liquidity_pool.token_b.as_ref(), // or however you stored it
+            token_a.as_ref(),
+            token_b.as_ref(),
             &[bump],
         ];
         let signer_seeds = &[&seeds[..]];
@@ -521,11 +522,12 @@ impl<'info>SwapTokens<'info> {
             authority: self.liquidity_pool.to_account_info(),
         };
 
-        // Build the seeds array to match how your LiquidityPool PDA was derived
+        let (token_a, token_b) = LiquidityPool::sort_pubkeys(self.liquidity_pool.token_a, self.liquidity_pool.token_b);
+        // Build the seeds array to match how LiquidityPool PDA was derived
         let seeds = &[
             b"liquidity_pool",
-            self.liquidity_pool.token_a.as_ref(), // or however you stored it
-            self.liquidity_pool.token_b.as_ref(), // or however you stored it
+            token_a.as_ref(),
+            token_b.as_ref(),
             &[bump],
         ];
         let signer_seeds = &[&seeds[..]];
