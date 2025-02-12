@@ -25,6 +25,8 @@ describe("digital-nomad-exchange", () => {
     let lpTokenAccountA: Account;
     let lpTokenAccountB: Account;
     let lpTokenAccountC: Account;
+    let liquidityPoolPda: anchor.web3.PublicKey;
+    let bump: number;
 
 
     beforeEach(async () => {
@@ -99,15 +101,17 @@ describe("digital-nomad-exchange", () => {
             `user: ${user_account.publicKey.toBase58()}\n`,
             `system program: ${anchor.web3.SystemProgram.programId.toBase58()}\n`,
             `rent: ${anchor.web3.SYSVAR_RENT_PUBKEY.toBase58()}\n`
-        )
+        );
 
         // We need to get the PDA of the account to pass to the program tests
-        const [liquidityPoolPda, bump] = anchor.web3.PublicKey.findProgramAddressSync(
+        const [_liquidityPoolPda, _bump] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("liquidity_pool"), tokenA.toBuffer(), tokenB.toBuffer()],
             program.programId
         );
 
-        console.log(program.programId.toBase58());
+        liquidityPoolPda = _liquidityPoolPda;
+        bump = _bump;
+
         console.log(`liquidityPoolPda: ${liquidityPoolPda.toBase58()}\n`);
         console.log(`bump: ${bump}\n`);
 
@@ -189,13 +193,13 @@ describe("digital-nomad-exchange", () => {
     it("Is initialized!", async () => {
 
         // Fetch the liquidity pool account
-        const liquidityPoolAccount = await program.account.liquidityPool.fetch(liquidityPool.publicKey);
+        const liquidityPoolAccount = await program.account.liquidityPool.fetch(liquidityPoolPda);
 
         console.log(`Liquidity Pool Account: ${JSON.stringify(liquidityPoolAccount)}`);
 
         // Check if the liquidity pool account has the expected values
-        assert.ok(liquidityPoolAccount.tokenA.equals(userTokenAccountA.address), "TokenA accounts do not match");
-        assert.ok(liquidityPoolAccount.tokenB.equals(userTokenAccountB.address), "TokenB accounts do not match");
+        assert.ok(liquidityPoolAccount.tokenA.equals(tokenA), "TokenA accounts do not match");
+        assert.ok(liquidityPoolAccount.tokenB.equals(tokenB), "TokenB accounts do not match");
         assert.ok(liquidityPoolAccount.lpToken.equals(lpToken), "LP mint accounts do not match");
         assert.ok(liquidityPoolAccount.owner.equals(user_account.publicKey), "Owner accounts do not match");
 
