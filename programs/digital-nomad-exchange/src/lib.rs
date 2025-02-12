@@ -76,7 +76,16 @@ pub mod digital_nomad_exchange {
         Ok(())
     }
 
-    pub fn swap_tokens(ctx: Context<SwapTokens>, amount: u64) -> Result<()> {
+    pub fn swap_tokens(ctx: Context<SwapTokens>, amount: u64, bump: u8) -> Result<()> {
+
+        let mint_a = ctx.accounts.mint_a.key();
+        let mint_b = ctx.accounts.mint_b.key();
+        let pool_seeds = &[
+            b"liquidity_pool".as_ref(),
+            mint_a.as_ref(),
+            mint_b.as_ref(),
+            &[bump]
+        ];
 
         // Calculate amount to transfer for token B
         let amount_b = LiquidityPool::calculate_swap(
@@ -86,10 +95,10 @@ pub mod digital_nomad_exchange {
         );
 
         // Transfer tokens from user to pool
-        token::transfer(ctx.accounts.into_transfer_from_user_to_pool_a_context(), amount)?;
+        token::transfer(ctx.accounts.into_transfer_from_user_to_pool_a_context(pool_seeds), amount)?;
 
         // Transfer tokens to user
-        token::transfer(ctx.accounts.into_transfer_from_pool_b_to_user_context(), amount_b)?;
+        token::transfer(ctx.accounts.into_transfer_from_pool_b_to_user_context(pool_seeds), amount_b)?;
 
         Ok(())
     }
@@ -353,24 +362,24 @@ pub struct SwapTokens<'info> {
 }
 
 impl<'info>SwapTokens<'info> {
-    fn into_transfer_from_user_to_pool_a_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+    fn into_transfer_from_user_to_pool_a_context<>(&self, seeds: &[&[u8]],) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
             from: self.user_token_a.to_account_info(),
             to: self.lp_token_a.to_account_info(),
-            authority: self.user.to_account_info(),
+            authority: self.liquidity_pool.to_account_info(),
         };
         let cpi_program = self.token_program.to_account_info();
-        CpiContext::new(cpi_program, cpi_accounts)
+        CpiContext::new_with_signer(cpi_program, cpi_accounts, &[seeds])
     }
 
-    fn into_transfer_from_pool_b_to_user_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+    fn into_transfer_from_pool_b_to_user_context(&self, seeds: &[&[u8]],) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
             from: self.lp_token_b.to_account_info(),
             to: self.user_token_b.to_account_info(),
             authority: self.liquidity_pool.to_account_info()
         };
         let cpi_program = self.token_program.to_account_info();
-        CpiContext::new(cpi_program, cpi_accounts)
+        CpiContext::new_with_signer(cpi_program, cpi_accounts, &[seeds])
     }
 }
 
