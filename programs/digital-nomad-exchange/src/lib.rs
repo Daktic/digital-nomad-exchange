@@ -569,4 +569,13 @@ mod tests {
         let amount_b = LiquidityPool::calculate_swap(token_balance_a, token_balance_b, amount);
         assert_eq!(amount_b, 909090909090, "Should swap large number of token B");
     }
+
+    #[test]
+    fn test_print_bytes_of_address() {
+        use std::str::FromStr;
+        let address = Pubkey::from_str("D4JCMSe8bh1GcuPyGjicJ4JbdcmWmAPLvcuDqgpVSWFB").unwrap();
+        let bytes = address.to_bytes();
+        println!("{:?}", bytes);
+        assert_eq!(bytes, [179, 36, 109, 199, 29, 35, 224, 187, 140, 184, 103, 132, 24, 111, 50, 110, 230, 100, 210, 140, 213, 176, 129, 44, 188, 185, 6, 150, 120, 221, 184, 18], "Should print the bytes of the address");
+    }
 }
