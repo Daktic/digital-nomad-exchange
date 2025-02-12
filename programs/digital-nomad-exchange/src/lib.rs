@@ -13,8 +13,8 @@ pub mod digital_nomad_exchange {
     pub fn initialize(ctx: Context<CreateLiquidityPool>, bump: u8) -> Result<()> {
         let liquidity_pool = &mut ctx.accounts.liquidity_pool;
         // Initialize the liquidity pool account
-        liquidity_pool.token_a = ctx.accounts.token_a.key();
-        liquidity_pool.token_b = ctx.accounts.token_b.key();
+        liquidity_pool.token_a = ctx.accounts.token_a_mint.key();
+        liquidity_pool.token_b = ctx.accounts.token_b_mint.key();
         liquidity_pool.lp_token = ctx.accounts.lp_token.key();
         liquidity_pool.owner = ctx.accounts.user.key();
         Ok(())
@@ -205,12 +205,12 @@ pub struct CreateLiquidityPool<'info> {
         init,
         payer = user,
         space = 8 + 32 + 32 + 32 + 32,
-        seeds = [b"liquidity_pool", token_a.key().as_ref(), token_b.key().as_ref()],
+        seeds = [b"liquidity_pool", token_a_mint.key().as_ref(), token_b_mint.key().as_ref()],
         bump
     )]
     pub liquidity_pool: Account<'info, LiquidityPool>,
-    pub token_a: Account<'info, TokenAccount>,
-    pub token_b: Account<'info, TokenAccount>,
+    pub token_a_mint: Account<'info, Mint>,
+    pub token_b_mint: Account<'info, Mint>,
     pub lp_token: Account<'info, Mint>,
     #[account(mut)]
     pub user: Signer<'info>,
