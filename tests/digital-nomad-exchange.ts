@@ -22,9 +22,9 @@ describe("digital-nomad-exchange", () => {
     let liquidityPool: anchor.web3.Keypair;
     let amount_to_mint: number;
     let userAssociatedLPToken: Account;
-    let lpTokenAccountA: Account;
-    let lpTokenAccountB: Account;
-    let lpTokenAccountC: Account;
+    let lpTokenAccountA: anchor.web3.PublicKey;
+    let lpTokenAccountB: anchor.web3.PublicKey;
+    let lpTokenAccountC: anchor.web3.PublicKey;
     let liquidityPoolPda: anchor.web3.PublicKey;
     let bump: number;
 
@@ -109,8 +109,22 @@ describe("digital-nomad-exchange", () => {
             program.programId
         );
 
+        // Same for the token accounts
+        const [lpTokenAPda, lpTokenABump] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("pool_token_a"), tokenA.toBuffer()],
+            program.programId
+        );
+
+        const [lpTokenBPda, lpTokenBBump] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("pool_token_b"), tokenB.toBuffer()],
+            program.programId
+        );
+
         liquidityPoolPda = _liquidityPoolPda;
         bump = _bump;
+
+        lpTokenAccountA = lpTokenAPda
+        lpTokenAccountB = lpTokenBPda
 
         console.log(`liquidityPoolPda: ${liquidityPoolPda.toBase58()}\n`);
         console.log(`bump: ${bump}\n`);
@@ -121,13 +135,15 @@ describe("digital-nomad-exchange", () => {
                 tokenAMint: tokenA,
                 tokenBMint: tokenB,
                 lpToken: lpToken,
+                lpTokenA: lpTokenAPda,
+                lpTokenB: lpTokenBPda,
                 user: user_account.publicKey,
                 systemProgram: anchor.web3.SystemProgram.programId,
                 rent: anchor.web3.SYSVAR_RENT_PUBKEY,
             })
             .signers([user_account])
             .rpc();
-        console.log("Contract Deployed", liquidityPool.publicKey.toBase58());
+        console.log("Contract Deployed", liquidityPoolPda.toBase58());
 
         // Add some tokens to user token accounts
         amount_to_mint = 100_000_000_000;
@@ -167,27 +183,6 @@ describe("digital-nomad-exchange", () => {
             lpToken,
             user_account.publicKey
         );
-
-        lpTokenAccountA = await getOrCreateAssociatedTokenAccount(
-            provider.connection,
-            user_account,
-            tokenA,
-            liquidityPool.publicKey
-        )
-
-        lpTokenAccountB = await getOrCreateAssociatedTokenAccount(
-            provider.connection,
-            user_account,
-            tokenB,
-            liquidityPool.publicKey
-        )
-
-        lpTokenAccountC = await getOrCreateAssociatedTokenAccount(
-            provider.connection,
-            user_account,
-            tokenC,
-            liquidityPool.publicKey
-        )
     })
 
     it("Is initialized!", async () => {
@@ -219,8 +214,8 @@ describe("digital-nomad-exchange", () => {
                 userTokenA: userTokenAccountA.address,
                 mintB: tokenB,
                 userTokenB: userTokenAccountB.address,
-                lpTokenA: lpTokenAccountA.address,
-                lpTokenB: lpTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
@@ -231,8 +226,8 @@ describe("digital-nomad-exchange", () => {
         // Fetch the token account information
         const tokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
         const tokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
-        const lpTokenAAccountInfo = await getAccount(provider.connection, lpTokenAccountA.address);
-        const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB.address);
+        const lpTokenAAccountInfo = await getAccount(provider.connection, lpTokenAccountA);
+        const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB);
         const userAssociatedLPTokenInfo = await getAccount(provider.connection, userAssociatedLPToken.address);
 
         // Calculate the expected lp balance
@@ -266,8 +261,8 @@ describe("digital-nomad-exchange", () => {
                 userTokenA: userTokenAccountA.address,
                 mintB: tokenB,
                 userTokenB: userTokenAccountB.address,
-                lpTokenA: lpTokenAccountA.address,
-                lpTokenB: lpTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
@@ -284,8 +279,8 @@ describe("digital-nomad-exchange", () => {
                     userTokenA: userTokenAccountC.address,
                     mintB: tokenB,
                     userTokenB: userTokenAccountB.address,
-                    lpTokenA: lpTokenAccountC.address,
-                    lpTokenB: lpTokenAccountB.address,
+                    lpTokenA: lpTokenAccountC,
+                    lpTokenB: lpTokenAccountB,
                     lpToken: lpToken,
                     userLpTokenAccount: userAssociatedLPToken.address,
                     user: user_account.publicKey,
@@ -328,8 +323,8 @@ describe("digital-nomad-exchange", () => {
                 userTokenA: userTokenAccountA.address,
                 mintB: tokenB,
                 userTokenB: userTokenAccountB.address,
-                lpTokenA: lpTokenAccountA.address,
-                lpTokenB: lpTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
@@ -340,8 +335,8 @@ describe("digital-nomad-exchange", () => {
         // Fetch the token account information
         const tokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
         const tokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
-        const lpTokenAAccountInfo = await getAccount(provider.connection, lpTokenAccountA.address);
-        const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB.address);
+        const lpTokenAAccountInfo = await getAccount(provider.connection, lpTokenAccountA);
+        const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB);
         const userAssociatedLPTokenInfo = await getAccount(provider.connection, userAssociatedLPToken.address);
 
         // Calculate the expected lp balance
@@ -373,8 +368,8 @@ describe("digital-nomad-exchange", () => {
                 userTokenA: userTokenAccountA.address,
                 mintB: tokenB,
                 userTokenB: userTokenAccountB.address,
-                lpTokenA: lpTokenAccountA.address,
-                lpTokenB: lpTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
@@ -394,8 +389,8 @@ describe("digital-nomad-exchange", () => {
                 userTokenA: userTokenAccountA.address,
                 mintB: tokenB,
                 userTokenB: userTokenAccountB.address,
-                lpTokenA: lpTokenAccountA.address,
-                lpTokenB: lpTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
@@ -432,8 +427,8 @@ describe("digital-nomad-exchange", () => {
                 userTokenA: userTokenAccountA.address,
                 mintB: tokenB,
                 userTokenB: userTokenAccountB.address,
-                lpTokenA: lpTokenAccountA.address,
-                lpTokenB: lpTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
@@ -451,8 +446,8 @@ describe("digital-nomad-exchange", () => {
                 userTokenA: userTokenAccountA.address,
                 mintB: tokenB,
                 userTokenB: userTokenAccountB.address,
-                lpTokenA: lpTokenAccountA.address,
-                lpTokenB: lpTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
                 lpToken: lpToken,
                 user: user_account.publicKey,
             })
@@ -487,8 +482,8 @@ describe("digital-nomad-exchange", () => {
                 userTokenA: userTokenAccountB.address,
                 mintB: tokenA,
                 userTokenB: userTokenAccountA.address,
-                lpTokenA: lpTokenAccountB.address,
-                lpTokenB: lpTokenAccountA.address,
+                lpTokenA: lpTokenAccountB,
+                lpTokenB: lpTokenAccountA,
                 lpToken: lpToken,
                 user: user_account.publicKey,
             })
@@ -528,8 +523,8 @@ describe("digital-nomad-exchange", () => {
                 userTokenA: userTokenAccountA.address,
                 mintB: tokenB,
                 userTokenB: userTokenAccountB.address,
-                lpTokenA: lpTokenAccountA.address,
-                lpTokenB: lpTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
@@ -560,7 +555,7 @@ describe("digital-nomad-exchange", () => {
                     mintB: tokenB,
                     userTokenB: userTokenAccountB.address,
                     lpTokenA: lpTokenAccountC.address,
-                    lpTokenB: lpTokenAccountB.address,
+                    lpTokenB: lpTokenAccountB,
                     lpToken: lpToken,
                     user: user_account.publicKey,
                 })
@@ -571,7 +566,7 @@ describe("digital-nomad-exchange", () => {
             assert.ifError(err);
                 // Fetch the token account information
                 userTokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
-                const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB.address);
+                const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB);
 
                 console.log(`User Token B Balance 3: ${userTokenBAccountInfo.amount}`);
                 assert.equal(userTokenBAccountInfo.amount, amount_to_mint-amount_to_send_b, "User Token balance B is should stay the same");
