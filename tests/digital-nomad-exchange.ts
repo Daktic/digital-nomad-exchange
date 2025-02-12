@@ -101,17 +101,27 @@ describe("digital-nomad-exchange", () => {
             `rent: ${anchor.web3.SYSVAR_RENT_PUBKEY.toBase58()}\n`
         )
 
-        await program.methods.initialize()
+        // We need to get the PDA of the account to pass to the program tests
+        const [liquidityPoolPda, bump] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("liquidity_pool"), tokenA.toBuffer(), tokenB.toBuffer()],
+            program.programId
+        );
+
+        console.log(program.programId.toBase58());
+        console.log(`liquidityPoolPda: ${liquidityPoolPda.toBase58()}\n`);
+        console.log(`bump: ${bump}\n`);
+
+        await program.methods.initialize(bump)
             .accounts({
-                liquidityPool: liquidityPool.publicKey,
-                tokenA: userTokenAccountA.address,
-                tokenB: userTokenAccountB.address,
+                liquidityPool: liquidityPoolPda,
+                tokenAMint: tokenA,
+                tokenBMint: tokenB,
                 lpToken: lpToken,
                 user: user_account.publicKey,
                 systemProgram: anchor.web3.SystemProgram.programId,
                 rent: anchor.web3.SYSVAR_RENT_PUBKEY,
             })
-            .signers([user_account, liquidityPool])
+            .signers([user_account])
             .rpc();
         console.log("Contract Deployed", liquidityPool.publicKey.toBase58());
 
