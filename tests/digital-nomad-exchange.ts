@@ -583,6 +583,7 @@ describe("digital-nomad-exchange", () => {
         );
 
         // Swap Arbitrary tokens
+        let threwError = false;
         try {
             const amount_to_swap = 534_321;
             await program.methods.swapTokens(new anchor.BN(amount_to_swap), bump)
@@ -602,16 +603,17 @@ describe("digital-nomad-exchange", () => {
                 .rpc();
         } catch (err) {
             // should throw error
-            assert.ifError(err);
-                // Fetch the token account information
-                userTokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
-                const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB);
-
-                console.log(`User Token B Balance 3: ${userTokenBAccountInfo.amount}`);
-                assert.equal(userTokenBAccountInfo.amount, amount_to_mint-amount_to_send_b, "User Token balance B is should stay the same");
-                console.log(`LP Token B Balance: ${lpTokenBAccountInfo.amount}`);
-                assert.equal(lpTokenBAccountInfo.amount, amount_to_send_b, "Pool Token balance B is should stay the same");
+            threwError = true;
             }
+        assert.equal(threwError, true, "Should throw error when swapping arbitrary token");
+        // Fetch the token account information
+        userTokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
+        const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB);
+
+        console.log(`User Token B Balance 3: ${userTokenBAccountInfo.amount}`);
+        assert.equal(userTokenBAccountInfo.amount, amount_to_mint-amount_to_send_b, "User Token balance B is should stay the same");
+        console.log(`LP Token B Balance: ${lpTokenBAccountInfo.amount}`);
+        assert.equal(lpTokenBAccountInfo.amount, amount_to_send_b, "Pool Token balance B is should stay the same");
     });
 
 });
