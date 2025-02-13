@@ -2,14 +2,15 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { DigitalNomadExchange } from "../target/types/digital_nomad_exchange";
 import {
-    Account, createInitializeAccountInstruction,
+    Account,
+    createInitializeAccountInstruction,
     createMint,
     getAccount,
     getOrCreateAssociatedTokenAccount,
     mintTo,
-    TOKEN_PROGRAM_ID
+    TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import {beforeEach} from "mocha";
+import { beforeEach } from "mocha";
 import * as assert from "node:assert";
 
 describe("digital-nomad-exchange", () => {
@@ -35,44 +36,44 @@ describe("digital-nomad-exchange", () => {
     let liquidityPoolPda: anchor.web3.PublicKey;
     let bump: number;
 
+    // Generic sort function for two PublicKeys
+    function sortTokens(
+        tokenA: anchor.web3.PublicKey,
+        tokenB: anchor.web3.PublicKey
+    ): {
+        sortedTokenA: anchor.web3.PublicKey;
+        sortedTokenB: anchor.web3.PublicKey;
+    } {
+        if (tokenA.toBuffer().compare(tokenB.toBuffer()) < 0) {
+            return {
+                sortedTokenA: tokenA,
+                sortedTokenB: tokenB,
+            };
+        } else {
+            return {
+                sortedTokenA: tokenB,
+                sortedTokenB: tokenA,
+            };
+        }
+    }
 
-    beforeEach(async () => {
+    function setUpEnvironment() {
         user_account = anchor.web3.Keypair.generate();
 
         const airdrop_tx = await provider.connection.requestAirdrop(user_account.publicKey, 1000000000);
-        // Make sure we wait for confirmation
         await provider.connection.confirmTransaction({
             signature: airdrop_tx,
-            ...(await provider.connection.getLatestBlockhash("finalized"))
+            ...(await provider.connection.getLatestBlockhash("finalized")),
         });
+    }
 
-        //   Create mint accounts to create tokens
-        tokenA = await createMint(
-            provider.connection,
-            user_account,
-            user_account.publicKey,
-            null,
-            9,
-        );
+    function createMints() {
+        tokenA = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
+        tokenB = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
+        tokenC = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
+    }
 
-        tokenB = await createMint(
-            provider.connection,
-            user_account,
-            user_account.publicKey,
-            null,
-            9,
-        );
-
-        // Create Token for arbitrary use
-        tokenC = await createMint(
-            provider.connection,
-            user_account,
-            user_account.publicKey,
-            null,
-            9,
-        );
-
-        // Create associated token accounts for the user
+    function createAssociatedTokenAccounts() {
         userTokenAccountA = await getOrCreateAssociatedTokenAccount(
             provider.connection,
             user_account,
@@ -85,105 +86,145 @@ describe("digital-nomad-exchange", () => {
             tokenB,
             user_account.publicKey
         );
-
-        // Create a new associated token account
         userTokenAccountC = await getOrCreateAssociatedTokenAccount(
             provider.connection,
             user_account,
             tokenC,
             user_account.publicKey
         );
+    }
 
-        // Create LP token mint
-        lpToken = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
-
-        // Create liquidity pool account
-        liquidityPool = anchor.web3.Keypair.generate();
-
-        console.log(
-            `liquidityPool: ${liquidityPool.publicKey.toBase58()}\n`,
-            `tokenA: ${userTokenAccountA.address.toBase58()}\n`,
-            `tokenB: ${userTokenAccountB.address.toBase58()}\n`,
-            `lpToken: ${lpToken.toBase58()}\n`,
-            `user: ${user_account.publicKey.toBase58()}\n`,
-            `system program: ${anchor.web3.SystemProgram.programId.toBase58()}\n`,
-            `rent: ${anchor.web3.SYSVAR_RENT_PUBKEY.toBase58()}\n`
-        );
-
-        // We need to get the PDA of the account to pass to the program tests
+    function derivePDAAddresses() {
         const [_liquidityPoolPda, _bump] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("liquidity_pool"), tokenA.toBuffer(), tokenB.toBuffer()],
             program.programId
         );
+        liquidityPoolPda = _liquidityPoolPda;
+        bump = _bump;
 
-        // Same for the token accounts
+        // Derive LP token PDAs using the sorted mints
         const [lpTokenAPda, lpTokenABump] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("pool_token_a"), tokenA.toBuffer()],
             program.programId
         );
-
         const [lpTokenBPda, lpTokenBBump] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("pool_token_b"), tokenB.toBuffer()],
             program.programId
         );
+        lpTokenAccountA = lpTokenAPda;
+        lpTokenAccountB = lpTokenBPda;
+    }
 
-        liquidityPoolPda = _liquidityPoolPda;
-        bump = _bump;
-
-        lpTokenAccountA = lpTokenAPda
-        lpTokenAccountB = lpTokenBPda
-
-        console.log(`liquidityPoolPda: ${liquidityPoolPda.toBase58()}\n`);
-        console.log(`bump: ${bump}\n`);
-
-        await program.methods.initialize(bump)
-            .accounts({
-                liquidityPool: liquidityPoolPda,
-                tokenAMint: tokenA,
-                tokenBMint: tokenB,
-                lpToken: lpToken,
-                lpTokenA: lpTokenAPda,
-                lpTokenB: lpTokenBPda,
-                user: user_account.publicKey,
-                systemProgram: anchor.web3.SystemProgram.programId,
-                rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-            })
-            .signers([user_account])
-            .rpc();
-        console.log("Contract Deployed", liquidityPoolPda.toBase58());
-
-        // Add some tokens to user token accounts
-        amount_to_mint = 100_000_000_000;
-
-        // Mint each token to the user account
+    function mintTokensToUserAccounts(amountToMint:number) {
         await mintTo(
             provider.connection,
             user_account,
             tokenA,
             userTokenAccountA.address,
             user_account.publicKey,
-            amount_to_mint,
-        )
+            amountToMint
+        );
         await mintTo(
             provider.connection,
             user_account,
             tokenB,
             userTokenAccountB.address,
             user_account.publicKey,
-            amount_to_mint,
-        )
-
-        // Mint some tokens to the arbitrary account
+            amountToMint
+        );
         await mintTo(
             provider.connection,
             user_account,
             tokenC,
             userTokenAccountC.address,
             user_account.publicKey,
-            amount_to_mint,
+            amountToMint
+        );
+    }
+
+    function setUpFakeTokenCAccountForLP() {
+        // Derive the PDA for the token C account
+        const [lpTokenCPda, lpTokenCBump] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("pool_token_c"), tokenC.toBuffer()],
+            program.programId
         );
 
-        // Get the associated token account of the user
+        // Get the minimum balance for rent exemption
+        const ACCOUNT_SIZE = 165;
+        const lamportsForRent = await provider.connection.getMinimumBalanceForRentExemption(ACCOUNT_SIZE);
+
+        // Create the PDA account
+        const createAccountIx = anchor.web3.SystemProgram.createAccount({
+            fromPubkey: user_account.publicKey,
+            newAccountPubkey: lpTokenCPda,
+            space: ACCOUNT_SIZE,
+            lamports: lamportsForRent,
+            programId: TOKEN_PROGRAM_ID,
+        });
+
+        // Initialize the PDA account
+        const initAccountIx = createInitializeAccountInstruction(
+            lpTokenCPda,
+            tokenC,
+            liquidityPoolPda,
+            TOKEN_PROGRAM_ID
+        );
+
+        // Create and send the transaction
+        const tx = new anchor.web3.Transaction().add(createAccountIx).add(initAccountIx);
+        await provider.sendAndConfirm(tx, [user_account]);
+
+        // Assign the PDA to lpTokenAccountC
+        lpTokenAccountC = lpTokenCPda;
+    }
+
+    beforeEach(async () => {
+        // Airdrop tokens
+        setUpEnvironment();
+        // Create mints
+        createMints();
+
+        // --- Sort mints so that tokenA is the lower (canonical) mint ---
+        const sortedMints = sortTokens(tokenA, tokenB);
+        tokenA = sortedMints.sortedTokenA;
+        tokenB = sortedMints.sortedTokenB;
+
+        // Create associated token accounts for the user using the sorted mints
+        createAssociatedTokenAccounts();
+
+        // Create LP token mint
+        lpToken = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
+
+        // Create liquidity pool account keypair
+        liquidityPool = anchor.web3.Keypair.generate();
+
+        // Derive the liquidity pool PDA using the sorted mints
+        derivePDAAddresses();
+
+        console.log(`liquidityPoolPda: ${liquidityPoolPda.toBase58()}`);
+        console.log(`bump: ${bump}`);
+
+        // Initialize the liquidity pool on-chain with sorted values
+        await program.methods.initialize(bump)
+            .accounts({
+                liquidityPool: liquidityPoolPda,
+                tokenAMint: tokenA,
+                tokenBMint: tokenB,
+                lpToken: lpToken,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
+                user: user_account.publicKey,
+                systemProgram: anchor.web3.SystemProgram.programId,
+                rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+            })
+            .signers([user_account])
+            .rpc();
+
+        // Mint tokens to the user token accounts
+        amount_to_mint = 100_000_000_000;
+        mintTokensToUserAccounts(amount_to_mint);
+
+        // Get the associated LP token account for the user
         userAssociatedLPToken = await getOrCreateAssociatedTokenAccount(
             provider.connection,
             user_account,
@@ -192,39 +233,10 @@ describe("digital-nomad-exchange", () => {
         );
 
         // Create a fake token C account for testing
-        const lpTokenCKeypair = anchor.web3.Keypair.generate();
-        const ACCOUNT_SIZE = 165; // bytes for a token account
-        const lamportsForRent = await provider.connection.getMinimumBalanceForRentExemption(
-            ACCOUNT_SIZE
-        );
-
-        const createAccountIx = anchor.web3.SystemProgram.createAccount({
-            fromPubkey: user_account.publicKey,
-            newAccountPubkey: lpTokenCKeypair.publicKey,
-            space: ACCOUNT_SIZE,
-            lamports: lamportsForRent,
-            programId: TOKEN_PROGRAM_ID,
-        });
-
-        const initAccountIx = createInitializeAccountInstruction(
-            lpTokenCKeypair.publicKey,
-            tokenC,
-            liquidityPoolPda,
-            TOKEN_PROGRAM_ID
-        );
-
-        const tx = new anchor.web3.Transaction()
-            .add(createAccountIx)
-            .add(initAccountIx);
-
-        await provider.sendAndConfirm(tx, [user_account, lpTokenCKeypair]);
-
-        lpTokenAccountC = lpTokenCKeypair.publicKey;
-
-    })
+        setUpFakeTokenCAccountForLP();
+    });
 
     it("Is initialized!", async () => {
-
         // Fetch the liquidity pool account
         const liquidityPoolAccount = await program.account.liquidityPool.fetch(liquidityPoolPda);
 
@@ -237,10 +249,10 @@ describe("digital-nomad-exchange", () => {
         assert.ok(liquidityPoolAccount.owner.equals(user_account.publicKey), "Owner accounts do not match");
 
         console.log("Liquidity pool is initialized with the correct values");
-
     });
 
-    it("Can Add Liquidity", async () => {
+
+it("Can Add Liquidity", async () => {
         // Call the addLiquidity function on the program
         // The user will supply a 1:1 ratio of both tokens, each with 9 decimals
         // The anchor.BN is used to create a new Big Number instance
