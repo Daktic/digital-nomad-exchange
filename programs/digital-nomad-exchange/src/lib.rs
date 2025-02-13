@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Mint, MintTo, Token, TokenAccount, Transfer};
 use anchor_spl::token::spl_token;
-
+use anchor_spl::token::spl_token::error::TokenError::InvalidMint;
 
 declare_id!("D4JCMSe8bh1GcuPyGjicJ4JbdcmWmAPLvcuDqgpVSWFB");
 
@@ -14,12 +14,25 @@ pub mod digital_nomad_exchange {
     // It will create a new Liquidity Pool account and mint LP tokens to the user.
     pub fn initialize(ctx: Context<CreateLiquidityPool>, bump: u8) -> Result<()> {
         let liquidity_pool = &mut ctx.accounts.liquidity_pool;
-        // Initialize the liquidity pool account
-        liquidity_pool.token_a = ctx.accounts.token_a_mint.key();
-        liquidity_pool.token_b = ctx.accounts.token_b_mint.key();
+
+        let token_a = ctx.accounts.token_a_mint.key();
+        let token_b = ctx.accounts.token_b_mint.key();
+
+        // Sort the tokens so that the lower Pubkey is always token_a.
+        if token_a < token_b {
+            liquidity_pool.token_a = token_a;
+            liquidity_pool.token_b = token_b;
+            liquidity_pool.lp_token_a = ctx.accounts.lp_token_a.key();
+            liquidity_pool.lp_token_b = ctx.accounts.lp_token_b.key();
+        } else {
+            liquidity_pool.token_a = token_b;
+            liquidity_pool.token_b = token_a;
+            // Swap the LP token accounts accordingly.
+            liquidity_pool.lp_token_a = ctx.accounts.lp_token_b.key();
+            liquidity_pool.lp_token_b = ctx.accounts.lp_token_a.key();
+        }
+
         liquidity_pool.lp_token = ctx.accounts.lp_token.key();
-        liquidity_pool.lp_token_a = ctx.accounts.lp_token_a.key();
-        liquidity_pool.lp_token_b = ctx.accounts.lp_token_b.key();
         liquidity_pool.owner = ctx.accounts.user.key();
         Ok(())
     }
@@ -471,7 +484,7 @@ pub struct SwapTokens<'info> {
     pub mint_b: Account<'info, Mint>,
     #[account(mut)]
     pub user_token_b: Account<'info, TokenAccount>,
-    // Create the pool's token-account for token A
+    // Get the pool's token-account for token A
     #[account(
         init_if_needed,
         payer = user,
@@ -481,7 +494,7 @@ pub struct SwapTokens<'info> {
         bump
     )]
     pub lp_token_a: Account<'info, TokenAccount>,
-    // Create the pool's token-account for token B
+    // Get the pool's token-account for token B
     #[account(
         init_if_needed,
         payer = user,
@@ -500,36 +513,44 @@ pub struct SwapTokens<'info> {
 }
 
 impl<'info>SwapTokens<'info> {
-    fn transfer_from_user_to_pool_a(
-        &self,
-        bump: u8,
-        amount:u64
-    ) -> Result<()> {
+    fn transfer_from_user_to_pool_a(&self, bump: u8, amount: u64) -> Result<()> {
+        msg!("Starting transfer_from_user_to_pool_a");
+        msg!("Liquidity Pool: {}", self.liquidity_pool.key());
+        msg!("User: {}", self.user.key());
+        // Check if user_token_a account is initialized
+        msg!("User Token A Mint: {}", self.user_token_a.mint);
+        msg!("User Token B Mint: {}", self.user_token_b.mint);
+
+        // Determine canonical ordering for the pool
+        let (expected_token_a, _expected_token_b) =
+            LiquidityPool::sort_pubkeys(self.liquidity_pool.token_a, self.liquidity_pool.token_b);
+
+        // Determine which user's account corresponds to the pool's token A.
+        let (user_token_in, lp_token_in) = if self.user_token_a.mint == expected_token_a {
+            (self.user_token_a.to_account_info(), self.lp_token_a.to_account_info())
+        } else if self.user_token_b.mint == expected_token_a {
+            (self.user_token_b.to_account_info(), self.lp_token_a.to_account_info())
+        } else {
+            // Neither account has the mint that matches the pool's canonical token A.
+            panic!("User does not have an account for the pool's token A");
+        };
+
         let cpi_accounts = Transfer {
             from: self.user_token_a.to_account_info(),
             to: self.lp_token_a.to_account_info(),
-            // This field means “the address that must sign the token::transfer”
             authority: self.user.to_account_info(),
         };
 
-        let (token_a, token_b) = LiquidityPool::sort_pubkeys(self.liquidity_pool.token_a, self.liquidity_pool.token_b);
-        // Build the seeds array to match how LiquidityPool PDA was derived
-        let seeds = &[
-            b"liquidity_pool",
-            token_a.as_ref(),
-            token_b.as_ref(),
-            &[bump],
-        ];
-        let signer_seeds = &[&seeds[..]];
-
+        msg!("Executing token::transfer from user to pool A");
         token::transfer(
-            CpiContext::new_with_signer(
+            CpiContext::new(
                 self.token_program.to_account_info(),
-                cpi_accounts,
-                signer_seeds
+                cpi_accounts
             ),
             amount
-        )
+        )?;
+        msg!("Completed transfer_from_user_to_pool_a");
+        Ok(())
     }
 
     fn transfer_from_pool_b_to_user(
