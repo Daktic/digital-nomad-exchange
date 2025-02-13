@@ -81,6 +81,7 @@ pub mod digital_nomad_exchange {
     }
 
     pub fn swap_tokens(ctx: Context<SwapTokens>, amount: u64, bump: u8) -> Result<()> {
+        msg!("Starting swap_tokens function");
 
         // Calculate amount to transfer for token B
         let amount_b = LiquidityPool::calculate_swap(
@@ -88,13 +89,17 @@ pub mod digital_nomad_exchange {
             ctx.accounts.lp_token_b.amount,
             amount
         );
+        msg!("Calculated amount_b: {}", amount_b);
 
         // Transfer tokens from user to pool
         ctx.accounts.transfer_from_user_to_pool_a(bump, amount)?;
+        msg!("Transferred {} tokens from user to pool A", amount);
 
         // Transfer tokens to user
         ctx.accounts.transfer_from_pool_b_to_user(bump, amount_b)?;
+        msg!("Transferred {} tokens from pool B to user", amount_b);
 
+        msg!("Completed swap_tokens function");
         Ok(())
     }
 }
@@ -466,15 +471,32 @@ pub struct SwapTokens<'info> {
     pub mint_b: Account<'info, Mint>,
     #[account(mut)]
     pub user_token_b: Account<'info, TokenAccount>,
-    #[account(mut)]
+    // Create the pool's token-account for token A
+    #[account(
+        init_if_needed,
+        payer = user,
+        token::mint = mint_a,
+        token::authority = liquidity_pool,
+        seeds = [b"pool_token_a", mint_a.key().as_ref()],
+        bump
+    )]
     pub lp_token_a: Account<'info, TokenAccount>,
-    #[account(mut)]
+    // Create the pool's token-account for token B
+    #[account(
+        init_if_needed,
+        payer = user,
+        token::mint = mint_b,
+        token::authority = liquidity_pool,
+        seeds = [b"pool_token_b", mint_b.key().as_ref()],
+        bump
+    )]
     pub lp_token_b: Account<'info, TokenAccount>,
     #[account(mut)]
     pub lp_token: Account<'info, Mint>,
     #[account(mut, signer)]
     pub user: Signer<'info>,
     pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
 }
 
 impl<'info>SwapTokens<'info> {
