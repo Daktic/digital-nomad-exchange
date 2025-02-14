@@ -57,7 +57,7 @@ describe("digital-nomad-exchange", () => {
         }
     }
 
-    function setUpEnvironment() {
+    async function setUpEnvironment() {
         user_account = anchor.web3.Keypair.generate();
 
         const airdrop_tx = await provider.connection.requestAirdrop(user_account.publicKey, 1000000000);
@@ -67,13 +67,13 @@ describe("digital-nomad-exchange", () => {
         });
     }
 
-    function createMints() {
+    async function createMints() {
         tokenA = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
         tokenB = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
         tokenC = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
     }
 
-    function createAssociatedTokenAccounts() {
+    async function createAssociatedTokenAccounts() {
         userTokenAccountA = await getOrCreateAssociatedTokenAccount(
             provider.connection,
             user_account,
@@ -115,7 +115,7 @@ describe("digital-nomad-exchange", () => {
         lpTokenAccountB = lpTokenBPda;
     }
 
-    function mintTokensToUserAccounts(amountToMint:number) {
+    async function mintTokensToUserAccounts(amountToMint:number) {
         await mintTo(
             provider.connection,
             user_account,
@@ -142,7 +142,7 @@ describe("digital-nomad-exchange", () => {
         );
     }
 
-    function setUpFakeTokenCAccountForLP() {
+    async function setUpFakeTokenCAccountForLP() {
         // Derive the PDA for the token C account
         const [lpTokenCPda, lpTokenCBump] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("pool_token_c"), tokenC.toBuffer()],
@@ -180,9 +180,9 @@ describe("digital-nomad-exchange", () => {
 
     beforeEach(async () => {
         // Airdrop tokens
-        setUpEnvironment();
+        await setUpEnvironment();
         // Create mints
-        createMints();
+        await createMints();
 
         // --- Sort mints so that tokenA is the lower (canonical) mint ---
         const sortedMints = sortTokens(tokenA, tokenB);
@@ -190,7 +190,7 @@ describe("digital-nomad-exchange", () => {
         tokenB = sortedMints.sortedTokenB;
 
         // Create associated token accounts for the user using the sorted mints
-        createAssociatedTokenAccounts();
+        await createAssociatedTokenAccounts();
 
         // Create LP token mint
         lpToken = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
@@ -222,7 +222,7 @@ describe("digital-nomad-exchange", () => {
 
         // Mint tokens to the user token accounts
         amount_to_mint = 100_000_000_000;
-        mintTokensToUserAccounts(amount_to_mint);
+        await mintTokensToUserAccounts(amount_to_mint);
 
         // Get the associated LP token account for the user
         userAssociatedLPToken = await getOrCreateAssociatedTokenAccount(
@@ -233,7 +233,7 @@ describe("digital-nomad-exchange", () => {
         );
 
         // Create a fake token C account for testing
-        setUpFakeTokenCAccountForLP();
+        await setUpFakeTokenCAccountForLP();
     });
 
     it("Is initialized!", async () => {
