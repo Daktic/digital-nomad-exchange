@@ -386,7 +386,7 @@ pub struct RemoveLiquidity<'info> {
     #[account(
         init_if_needed,
         payer = user,
-        token::mint = mint_a,
+        token::mint = mint_b,
         token::authority = liquidity_pool,
         seeds = [b"pool_token_b", mint_b.key().as_ref()],
         bump
