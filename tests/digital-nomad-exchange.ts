@@ -148,6 +148,7 @@ describe("digital-nomad-exchange", () => {
 
     async function setUpFakeTokenCAccountForLP() {
         console.log("Setting up fake token C account for LP");
+
         // Derive the PDA for the token C account
         const [lpTokenCPda, lpTokenCBump] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("pool_token_c"), tokenC.toBuffer()],
@@ -158,10 +159,12 @@ describe("digital-nomad-exchange", () => {
         const ACCOUNT_SIZE = 165;
         const lamportsForRent = await provider.connection.getMinimumBalanceForRentExemption(ACCOUNT_SIZE);
 
-        // Create the PDA account
-        const createAccountIx = anchor.web3.SystemProgram.createAccount({
+        // Create the PDA account with the correct seed
+        const createAccountIx = anchor.web3.SystemProgram.createAccountWithSeed({
             fromPubkey: user_account.publicKey,
             newAccountPubkey: lpTokenCPda,
+            basePubkey: user_account.publicKey,
+            seed: "pool_token_c",
             space: ACCOUNT_SIZE,
             lamports: lamportsForRent,
             programId: TOKEN_PROGRAM_ID,
@@ -238,7 +241,7 @@ describe("digital-nomad-exchange", () => {
         );
 
         // Create a fake token C account for testing
-        await setUpFakeTokenCAccountForLP();
+        // await setUpFakeTokenCAccountForLP();
 
         console.log("Setup complete");
     });
