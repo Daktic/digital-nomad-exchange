@@ -58,6 +58,7 @@ describe("digital-nomad-exchange", () => {
     }
 
     async function setUpEnvironment() {
+        console.log("Setting up environment");
         user_account = anchor.web3.Keypair.generate();
 
         const airdrop_tx = await provider.connection.requestAirdrop(user_account.publicKey, 1000000000);
@@ -74,6 +75,7 @@ describe("digital-nomad-exchange", () => {
     }
 
     async function createAssociatedTokenAccounts() {
+        console.log("Creating associated token accounts");
         userTokenAccountA = await getOrCreateAssociatedTokenAccount(
             provider.connection,
             user_account,
@@ -95,6 +97,7 @@ describe("digital-nomad-exchange", () => {
     }
 
     function derivePDAAddresses() {
+        console.log("Deriving PDA addresses");
         const [_liquidityPoolPda, _bump] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("liquidity_pool"), tokenA.toBuffer(), tokenB.toBuffer()],
             program.programId
@@ -116,6 +119,7 @@ describe("digital-nomad-exchange", () => {
     }
 
     async function mintTokensToUserAccounts(amountToMint:number) {
+        console.log("Minting tokens to user accounts");
         await mintTo(
             provider.connection,
             user_account,
@@ -143,6 +147,7 @@ describe("digital-nomad-exchange", () => {
     }
 
     async function setUpFakeTokenCAccountForLP() {
+        console.log("Setting up fake token C account for LP");
         // Derive the PDA for the token C account
         const [lpTokenCPda, lpTokenCBump] = anchor.web3.PublicKey.findProgramAddressSync(
             [Buffer.from("pool_token_c"), tokenC.toBuffer()],
@@ -234,6 +239,8 @@ describe("digital-nomad-exchange", () => {
 
         // Create a fake token C account for testing
         await setUpFakeTokenCAccountForLP();
+
+        console.log("Setup complete");
     });
 
     it("Is initialized!", async () => {
