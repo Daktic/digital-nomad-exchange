@@ -186,6 +186,22 @@ describe("digital-nomad-exchange", () => {
         lpTokenAccountC = lpTokenCPda;
     }
 
+    function logVariables() {
+        console.log(`Token A: ${tokenA.toBase58()}`);
+        console.log(`Token B: ${tokenB.toBase58()}`);
+        console.log(`Token C: ${tokenC.toBase58()}`);
+        console.log(`User Token Account A: ${userTokenAccountA.address.toBase58()}`);
+        console.log(`User Token Account B: ${userTokenAccountB.address.toBase58()}`);
+        console.log(`User Token Account C: ${userTokenAccountC.address.toBase58()}`);
+        console.log(`LP Token Account A: ${lpTokenAccountA.toBase58()}`);
+        console.log(`LP Token Account B: ${lpTokenAccountB.toBase58()}`);
+        // console.log(`LP Token Account C: ${lpTokenAccountC.toBase58()}`);
+        console.log(`LP Token: ${lpToken.toBase58()}`);
+        console.log(`Liquidity Pool: ${liquidityPool.publicKey.toBase58()}`);
+        console.log(`Liquidity Pool PDA: ${liquidityPoolPda.toBase58()}`);
+        console.log(`Bump: ${bump}`);
+    }
+
     beforeEach(async () => {
         // Airdrop tokens
         await setUpEnvironment();
@@ -208,9 +224,6 @@ describe("digital-nomad-exchange", () => {
 
         // Derive the liquidity pool PDA using the sorted mints
         derivePDAAddresses();
-
-        console.log(`liquidityPoolPda: ${liquidityPoolPda.toBase58()}`);
-        console.log(`bump: ${bump}`);
 
         // Initialize the liquidity pool on-chain with sorted values
         await program.methods.initialize(bump)
@@ -243,6 +256,8 @@ describe("digital-nomad-exchange", () => {
         // Create a fake token C account for testing
         // await setUpFakeTokenCAccountForLP();
 
+        // Log the variables
+        logVariables();
         console.log("Setup complete");
     });
 
