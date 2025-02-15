@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Mint, MintTo, Token, TokenAccount, Transfer};
 use anchor_spl::token::spl_token;
 use anchor_spl::token::spl_token::error::TokenError::InvalidMint;
+use fixed::types::I64F64;
 
 declare_id!("D4JCMSe8bh1GcuPyGjicJ4JbdcmWmAPLvcuDqgpVSWFB");
 
@@ -219,14 +220,21 @@ impl LiquidityPool {
         // Calculate the amount of tokens to swap
         // Add token balance a and amount to get the updated affect on the pool
         // Check if overflow
-        match token_balance_a.checked_mul(token_balance_b) {
+
+        let token_balance_a_fixed = I64F64::from_num(token_balance_a);
+        let token_balance_b_fixed = I64F64::from_num(token_balance_b);
+        let amount_fixed = I64F64::from_num(amount);
+
+
+        match token_balance_a_fixed.checked_mul(token_balance_b_fixed) {
             Some(product) => {
                 // Calculate the new balance of token a using the constant product formula
-                let amount_a_new = token_balance_a + amount;
+                let amount_a_new = token_balance_a_fixed + amount_fixed;
                 // Calculate the new balance of token b using the constant product formula
-                let amount_b_new = (product / amount_a_new).min(token_balance_b);
+                let amount_b_new = (product / amount_a_new).min(token_balance_b_fixed);
                 // Return the difference between the old and new balance of token b
-                token_balance_b - amount_b_new
+                let amount_out = token_balance_b_fixed - amount_b_new;
+                amount_out.to_num::<u64>()
             },
             None => {
                 // Overflow, use the decimals to re multiply
@@ -806,7 +814,7 @@ mod tests {
         let token_balance_b = 1000;
         let amount = 100;
         let amount_b = LiquidityPool::calculate_swap(token_balance_a,9, token_balance_b,9, amount);
-        assert_eq!(amount_b, 91, "Should swap 90.909 ~91 token B");
+        assert_eq!(amount_b, 90, "Should swap 90.909 ~round down to 90 token B");
     }
 
     #[test]
@@ -815,7 +823,7 @@ mod tests {
         let token_balance_b = 12345;
         let amount = 100;
         let amount_b = LiquidityPool::calculate_swap(token_balance_a,9, token_balance_b,9, amount);
-        assert_eq!(amount_b, 36, "Should swap 36.04 ~36 token B");
+        assert_eq!(amount_b, 35, "Should swap 35 token B");
     }
 
     #[test]
@@ -833,7 +841,7 @@ mod tests {
         let token_balance_b = 500_000_000;
         let amount = 100_000;
         let amount_b = LiquidityPool::calculate_swap(token_balance_a,9, token_balance_b,9, amount);
-        assert_eq!(amount_b, 49996, "Should swap speicifc number of token B: 49996");
+        assert_eq!(amount_b, 49995, "Should swap speicifc number of token B: 49995");
     }
 
     #[test]
