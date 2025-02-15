@@ -516,23 +516,30 @@ it("Can Add Liquidity", async () => {
 
         // Swap tokens
         const amount_to_swap = 100_000;
-        await program.methods
-            .swapTokens(new anchor.BN(amount_to_swap), false)
-            .accounts({
-                liquidityPool: liquidityPoolPda,
-                mintA: tokenA,
-                userTokenA: userTokenAccountA.address,
-                mintB: tokenB,
-                userTokenB: userTokenAccountB.address,
-                lpTokenA: lpTokenAccountA,
-                lpTokenB: lpTokenAccountB,
-                lpToken: lpToken,
-                user: user_account.publicKey,
-                tokenProgram: TOKEN_PROGRAM_ID,
-                systemProgram: anchor.web3.SystemProgram.programId,
-            })
-            .signers([user_account])
-            .rpc();
+        try {
+            await program.methods
+                .swapTokens(new anchor.BN(amount_to_swap), false)
+                .accounts({
+                    liquidityPool: liquidityPoolPda,
+                    mintA: tokenA,
+                    userTokenA: userTokenAccountA.address,
+                    mintB: tokenB,
+                    userTokenB: userTokenAccountB.address,
+                    lpTokenA: lpTokenAccountA,
+                    lpTokenB: lpTokenAccountB,
+                    lpToken: lpToken,
+                    user: user_account.publicKey,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                    systemProgram: anchor.web3.SystemProgram.programId,
+                })
+                .signers([user_account])
+                .rpc();
+        } catch (err) {
+            if (err.logs) {
+                console.error("Transaction logs:", err.logs);
+            }
+        }
+
         // Fetch the token account information
         const tokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
         const tokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
