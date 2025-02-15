@@ -514,7 +514,7 @@ it("Can Add Liquidity", async () => {
 
         // Swap tokens
         const amount_to_swap = 100_000;
-        await program.methods.swapTokens(new anchor.BN(amount_to_swap), bump)
+        await program.methods.swapTokens(new anchor.BN(amount_to_swap),false, bump)
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 // This will be standard so that token A is swapped for token b
@@ -550,16 +550,16 @@ it("Can Add Liquidity", async () => {
         assert.equal(BigInt(tokenBAccountInfo.amount), expectedTokenBalance, "Token balance B is incorrect");
 
         // Swap in reverse order
-        await program.methods.swapTokens(new anchor.BN(amount_to_swap), bump)
+        await program.methods.swapTokens(new anchor.BN(amount_to_swap),true, bump)
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 // This will be flipped so that token B is swapped for token A
-                mintA: tokenB,
-                userTokenA: userTokenAccountB.address,
-                mintB: tokenA,
-                userTokenB: userTokenAccountA.address,
-                lpTokenA: lpTokenAccountB,
-                lpTokenB: lpTokenAccountA,
+                mintA: tokenA,
+                userTokenA: userTokenAccountA.address,
+                mintB: tokenB,
+                userTokenB: userTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
                 lpToken: lpToken,
                 user: user_account.publicKey,
             })
