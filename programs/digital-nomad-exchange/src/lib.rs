@@ -580,12 +580,14 @@ impl<'info>SwapTokens<'info> {
             authority: self.liquidity_pool.to_account_info(),
         };
 
-        let (token_a, token_b) = LiquidityPool::sort_pubkeys(self.liquidity_pool.token_a, self.liquidity_pool.token_b);
+        let mint_a = self.mint_a.key();
+        let mint_b = self.mint_b.key();
+
         // Build the seeds array to match how LiquidityPool PDA was derived
         let seeds = &[
             b"liquidity_pool",
-            token_a.as_ref(),
-            token_b.as_ref(),
+            mint_a.as_ref(),
+            mint_b.as_ref(),
             &[bump],
         ];
         let signer_seeds = &[&seeds[..]];
@@ -604,10 +606,10 @@ impl<'info>SwapTokens<'info> {
         // Here we get the mint of the two tokens, and we check which one the user is trying to swap
         if token_mint == *self.mint_a {
             // If the user is trying to swap token A, we transfer from the user to the pool's token A account
-            (self.user_token_a.to_account_info(), self.user_token_b.to_account_info())
+            (self.user_token_a.to_account_info(), self.lp_token_a.to_account_info())
         } else if token_mint == *self.mint_b {
             // Otherwise, we transfer from the user to the pool's token B account
-            (self.user_token_b.to_account_info(), self.user_token_a.to_account_info())
+            (self.user_token_b.to_account_info(), self.lp_token_b.to_account_info())
         } else {
             panic!("Token not in pool!");
         }
