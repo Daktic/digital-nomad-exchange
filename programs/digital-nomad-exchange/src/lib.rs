@@ -89,17 +89,17 @@ pub mod digital_nomad_exchange {
         // Depending on the token the user is swapping, we need to transfer the tokens from the user to the pool
         let (token_in, token_mint_in, token_out, token_mint_out) = if reverse.unwrap_or(false) {
             (
-                ctx.accounts.user_token_b.clone(),
-                ctx.accounts.mint_b.clone(),
                 ctx.accounts.user_token_a.clone(),
                 ctx.accounts.mint_a.clone(),
+                ctx.accounts.user_token_b.clone(),
+                ctx.accounts.mint_b.clone(),
             )
         } else {
             (
-                ctx.accounts.user_token_a.clone(),
-                ctx.accounts.mint_a.clone(),
                 ctx.accounts.user_token_b.clone(),
                 ctx.accounts.mint_b.clone(),
+                ctx.accounts.user_token_a.clone(),
+                ctx.accounts.mint_a.clone(),
             )
         };
 
@@ -555,7 +555,6 @@ pub struct SwapTokens<'info> {
 impl<'info>SwapTokens<'info> {
     fn transfer_from_user_to_pool(&self, token_mint: Mint, amount: u64) -> Result<()> {
 
-
         let (user_account, lp_account) = self.get_matching_accounts(token_mint);
 
         let cpi_accounts = Transfer {
@@ -576,13 +575,13 @@ impl<'info>SwapTokens<'info> {
 
     fn transfer_from_pool_to_user(
         &self,
-        token: Mint,
+        token_mint: Mint,
         amount: u64,
         bump: u8,
     ) -> Result<()> {
 
         // Determine which token the user is swapping to
-        let (user_account, lp_account) = self.get_matching_accounts(token);
+        let (user_account, lp_account) = self.get_matching_accounts(token_mint);
 
         let cpi_accounts = Transfer {
             from: lp_account,
