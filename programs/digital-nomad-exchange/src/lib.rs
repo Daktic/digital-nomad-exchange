@@ -351,10 +351,12 @@ impl<'info> AddLiquidity<'info> {
             authority: self.user.to_account_info(),
         };
         // Build the seeds array to match how LiquidityPool PDA was derived
+        let mint_a = self.mint_a.key();
+        let mint_b = self.mint_b.key();
         let seeds = &[
             b"liquidity_pool",
-            self.liquidity_pool.token_a.as_ref(),
-            self.liquidity_pool.token_b.as_ref(),
+            mint_a.as_ref(),
+            mint_b.as_ref(),
             &[bump],
         ];
         let signer_seeds = &[&seeds[..]];
@@ -426,10 +428,13 @@ impl<'info>RemoveLiquidity<'info> {
             authority: self.liquidity_pool.to_account_info(),
         };
         // Build the seeds array to match how LiquidityPool PDA was derived
+        // Build the seeds array to match how LiquidityPool PDA was derived
+        let mint_a = self.mint_a.key();
+        let mint_b = self.mint_b.key();
         let seeds = &[
             b"liquidity_pool",
-            self.liquidity_pool.token_a.as_ref(),
-            self.liquidity_pool.token_b.as_ref(),
+            mint_a.as_ref(),
+            mint_b.as_ref(),
             &[bump],
         ];
         let signer_seeds = &[&seeds[..]];
@@ -451,10 +456,13 @@ impl<'info>RemoveLiquidity<'info> {
             authority: self.liquidity_pool.to_account_info()
         };
         // Build the seeds array to match how your LiquidityPool PDA was derived
+        // Build the seeds array to match how LiquidityPool PDA was derived
+        let mint_a = self.mint_a.key();
+        let mint_b = self.mint_b.key();
         let seeds = &[
             b"liquidity_pool",
-            self.liquidity_pool.token_a.as_ref(), // or however you stored it
-            self.liquidity_pool.token_b.as_ref(), // or however you stored it
+            mint_a.as_ref(),
+            mint_b.as_ref(),
             &[bump],
         ];
         let signer_seeds = &[&seeds[..]];
@@ -476,10 +484,13 @@ impl<'info>RemoveLiquidity<'info> {
             authority: self.user.to_account_info(),
         };
         // Build the seeds array to match how your LiquidityPool PDA was derived
+        // Build the seeds array to match how LiquidityPool PDA was derived
+        let mint_a = self.mint_a.key();
+        let mint_b = self.mint_b.key();
         let seeds = &[
             b"liquidity_pool",
-            self.liquidity_pool.token_a.as_ref(), // or however you stored it
-            self.liquidity_pool.token_b.as_ref(), // or however you stored it
+            mint_a.as_ref(),
+            mint_b.as_ref(),
             &[bump],
         ];
         let signer_seeds = &[&seeds[..]];
@@ -580,10 +591,9 @@ impl<'info>SwapTokens<'info> {
             authority: self.liquidity_pool.to_account_info(),
         };
 
+        // Build the seeds array to match how LiquidityPool PDA was derived
         let mint_a = self.mint_a.key();
         let mint_b = self.mint_b.key();
-
-        // Build the seeds array to match how LiquidityPool PDA was derived
         let seeds = &[
             b"liquidity_pool",
             mint_a.as_ref(),
