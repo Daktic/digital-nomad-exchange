@@ -226,7 +226,7 @@ describe("digital-nomad-exchange", () => {
         derivePDAAddresses();
 
         // Initialize the liquidity pool on-chain with sorted values
-        await program.methods.initialize(bump)
+        await program.methods.initialize()
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 tokenAMint: tokenA,
@@ -282,7 +282,7 @@ it("Can Add Liquidity", async () => {
         // The user will supply a 1:1 ratio of both tokens, each with 9 decimals
         // The anchor.BN is used to create a new Big Number instance
         const amount_to_send = amount_to_mint;
-        await program.methods.addLiquidity(new anchor.BN(amount_to_send), new anchor.BN(amount_to_send), bump)
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send), new anchor.BN(amount_to_send))
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
@@ -329,7 +329,7 @@ it("Can Add Liquidity", async () => {
         const amount_to_send_a = 1_000_000_000;
         const amount_to_send_b = 500_000_000;
         const amount_to_send_c = 87_654_321
-        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b), bump)
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
@@ -348,7 +348,7 @@ it("Can Add Liquidity", async () => {
         // Add arbitrary token
         let threwError = false;
         try {
-            await program.methods.addLiquidity(new anchor.BN(amount_to_send_c), new anchor.BN(amount_to_send_c), bump)
+            await program.methods.addLiquidity(new anchor.BN(amount_to_send_c), new anchor.BN(amount_to_send_c))
                 .accounts({
                     liquidityPool: liquidityPoolPda,
                     mintA: tokenC,
@@ -392,7 +392,7 @@ it("Can Add Liquidity", async () => {
         const amount_to_send_b = 500_000_000;
 
         // Call the addLiquidity function on the program with two different amounts
-        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b), bump)
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
@@ -437,7 +437,7 @@ it("Can Add Liquidity", async () => {
         const amount_to_send_b = 500_000_000;
 
         // Add some tokens to the liquidity pool
-        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b), bump)
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
@@ -458,7 +458,7 @@ it("Can Add Liquidity", async () => {
 
         // remove 50% of the liquidity
         const amount_to_remove = Math.floor(Number(current_lp_balance.amount / BigInt(2)))
-        await program.methods.removeLiquidity(new anchor.BN(amount_to_remove), bump)
+        await program.methods.removeLiquidity(new anchor.BN(amount_to_remove))
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
@@ -496,7 +496,7 @@ it("Can Add Liquidity", async () => {
         const amount_to_send_b = 500_000_000;
 
         // Add some tokens to the liquidity pool
-        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b), bump)
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
@@ -512,12 +512,14 @@ it("Can Add Liquidity", async () => {
             .signers([user_account])
             .rpc();
 
+        console.log(tokenA.toBase58());
+
         // Swap tokens
         const amount_to_swap = 100_000;
-        await program.methods.swapTokens(new anchor.BN(amount_to_swap),false, bump)
+        await program.methods
+            .swapTokens(new anchor.BN(amount_to_swap), false)
             .accounts({
                 liquidityPool: liquidityPoolPda,
-                // This will be standard so that token A is swapped for token b
                 mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
                 mintB: tokenB,
@@ -526,10 +528,11 @@ it("Can Add Liquidity", async () => {
                 lpTokenB: lpTokenAccountB,
                 lpToken: lpToken,
                 user: user_account.publicKey,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                systemProgram: anchor.web3.SystemProgram.programId,
             })
             .signers([user_account])
             .rpc();
-
         // Fetch the token account information
         const tokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
         const tokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
@@ -556,7 +559,7 @@ it("Can Add Liquidity", async () => {
         const amount_to_send_b = 500_000_000;
 
         // Add some tokens to the liquidity pool
-        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b), bump)
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
@@ -574,7 +577,7 @@ it("Can Add Liquidity", async () => {
 
         // Swap in reverse order
         const amount_to_swap = 100_000;
-        await program.methods.swapTokens(new anchor.BN(amount_to_swap),true, bump)
+        await program.methods.swapTokens(new anchor.BN(amount_to_swap),true)
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 // This will be flipped so that token B is swapped for token A
@@ -621,7 +624,7 @@ it("Can Add Liquidity", async () => {
         console.log(`User Token B Balance 1: ${userTokenBAccountInfo.amount}`);
 
         // Add some tokens to the liquidity pool
-        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b), bump)
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
             .accounts({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
@@ -652,7 +655,7 @@ it("Can Add Liquidity", async () => {
         let threwError = false;
         try {
             const amount_to_swap = 534_321;
-            await program.methods.swapTokens(new anchor.BN(amount_to_swap), bump)
+            await program.methods.swapTokens(new anchor.BN(amount_to_swap))
                 .accounts({
                     liquidityPool: liquidityPoolPda,
                     // This will be standard so that token A is swapped for token b
