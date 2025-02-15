@@ -84,20 +84,37 @@ pub mod digital_nomad_exchange {
         Ok(())
     }
 
-    pub fn swap_tokens(ctx: Context<SwapTokens>, amount: u64, bump: u8) -> Result<()> {
+    pub fn swap_tokens(ctx: Context<SwapTokens>, amount: u64, reverse: Option<bool>, bump: u8) -> Result<()> {
+
+        // Depending on the token the user is swapping, we need to transfer the tokens from the user to the pool
+        let (token_in, token_mint_in, token_out, token_mint_out) = if reverse.unwrap_or(false) {
+            (
+                ctx.accounts.user_token_b.clone(),
+                ctx.accounts.mint_b.clone(),
+                ctx.accounts.user_token_a.clone(),
+                ctx.accounts.mint_a.clone(),
+            )
+        } else {
+            (
+                ctx.accounts.user_token_a.clone(),
+                ctx.accounts.mint_a.clone(),
+                ctx.accounts.user_token_b.clone(),
+                ctx.accounts.mint_b.clone(),
+            )
+        };
 
         // Calculate amount to transfer for token B
         let amount_b = LiquidityPool::calculate_swap(
-            ctx.accounts.lp_token_a.amount,
-            ctx.accounts.lp_token_b.amount,
+            token_in.amount,
+            token_out.amount,
             amount
         );
 
         // Transfer tokens from user to pool
-        ctx.accounts.transfer_from_user_to_pool_a(amount)?;
+        ctx.accounts.transfer_from_user_to_pool(*token_mint_in, amount)?;
 
         // Transfer tokens to user
-        ctx.accounts.transfer_from_pool_b_to_user(bump, amount_b)?;
+        ctx.accounts.transfer_from_pool_to_user(*token_mint_out, amount_b, bump)?;
 
         Ok(())
     }
@@ -408,11 +425,11 @@ impl<'info>RemoveLiquidity<'info> {
             to: self.user_token_a.to_account_info(),
             authority: self.liquidity_pool.to_account_info(),
         };
-        // Build the seeds array to match how your LiquidityPool PDA was derived
+        // Build the seeds array to match how LiquidityPool PDA was derived
         let seeds = &[
             b"liquidity_pool",
-            self.liquidity_pool.token_a.as_ref(), // or however you stored it
-            self.liquidity_pool.token_b.as_ref(), // or however you stored it
+            self.liquidity_pool.token_a.as_ref(),
+            self.liquidity_pool.token_b.as_ref(),
             &[bump],
         ];
         let signer_seeds = &[&seeds[..]];
@@ -525,11 +542,14 @@ pub struct SwapTokens<'info> {
 }
 
 impl<'info>SwapTokens<'info> {
-    fn transfer_from_user_to_pool_a(&self, amount: u64) -> Result<()> {
+    fn transfer_from_user_to_pool(&self, token_mint: Mint, amount: u64) -> Result<()> {
+
+
+        let (user_account, lp_account) = self.get_matching_accounts(token_mint);
 
         let cpi_accounts = Transfer {
-            from: self.user_token_a.to_account_info(),
-            to: self.lp_token_a.to_account_info(),
+            from: user_account,
+            to: lp_account,
             authority: self.user.to_account_info(),
         };
 
@@ -543,14 +563,19 @@ impl<'info>SwapTokens<'info> {
         Ok(())
     }
 
-    fn transfer_from_pool_b_to_user(
+    fn transfer_from_pool_to_user(
         &self,
+        token: Mint,
+        amount: u64,
         bump: u8,
-        amount: u64
     ) -> Result<()> {
+
+        // Determine which token the user is swapping to
+        let (user_account, lp_account) = self.get_matching_accounts(token);
+
         let cpi_accounts = Transfer {
-            from: self.lp_token_b.to_account_info(),
-            to: self.user_token_b.to_account_info(),
+            from: lp_account,
+            to: user_account,
             // This field means “the address that must sign the token::transfer”
             authority: self.liquidity_pool.to_account_info(),
         };
@@ -573,6 +598,17 @@ impl<'info>SwapTokens<'info> {
             ),
             amount
         )
+    }
+
+    fn get_matching_accounts(&self, token_mint: Mint) -> (AccountInfo<'info>, AccountInfo<'info>) {
+        // Here we get the mint of the two tokens, and we check which one the user is trying to swap
+        if token_mint == *self.mint_a {
+            // If the user is trying to swap token A, we transfer from the user to the pool's token A account
+            (self.user_token_a.to_account_info(), self.user_token_b.to_account_info())
+        } else {
+            // Otherwise, we transfer from the user to the pool's token B account
+            (self.user_token_b.to_account_info(), self.user_token_a.to_account_info())
+        }
     }
 }
 
