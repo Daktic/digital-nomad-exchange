@@ -605,9 +605,11 @@ impl<'info>SwapTokens<'info> {
         if token_mint == *self.mint_a {
             // If the user is trying to swap token A, we transfer from the user to the pool's token A account
             (self.user_token_a.to_account_info(), self.user_token_b.to_account_info())
-        } else {
+        } else if token_mint == *self.mint_b {
             // Otherwise, we transfer from the user to the pool's token B account
             (self.user_token_b.to_account_info(), self.user_token_a.to_account_info())
+        } else {
+            panic!("Token not in pool!");
         }
     }
 }
