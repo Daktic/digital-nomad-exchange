@@ -85,7 +85,6 @@ pub mod digital_nomad_exchange {
     }
 
     pub fn swap_tokens(ctx: Context<SwapTokens>, amount: u64, bump: u8) -> Result<()> {
-        msg!("Starting swap_tokens function");
 
         // Calculate amount to transfer for token B
         let amount_b = LiquidityPool::calculate_swap(
@@ -93,17 +92,13 @@ pub mod digital_nomad_exchange {
             ctx.accounts.lp_token_b.amount,
             amount
         );
-        msg!("Calculated amount_b: {}", amount_b);
 
         // Transfer tokens from user to pool
-        ctx.accounts.transfer_from_user_to_pool_a(bump, amount)?;
-        msg!("Transferred {} tokens from user to pool A", amount);
+        ctx.accounts.transfer_from_user_to_pool_a(amount)?;
 
         // Transfer tokens to user
         ctx.accounts.transfer_from_pool_b_to_user(bump, amount_b)?;
-        msg!("Transferred {} tokens from pool B to user", amount_b);
 
-        msg!("Completed swap_tokens function");
         Ok(())
     }
 }
@@ -530,27 +525,7 @@ pub struct SwapTokens<'info> {
 }
 
 impl<'info>SwapTokens<'info> {
-    fn transfer_from_user_to_pool_a(&self, bump: u8, amount: u64) -> Result<()> {
-        msg!("Starting transfer_from_user_to_pool_a");
-        msg!("Liquidity Pool: {}", self.liquidity_pool.key());
-        msg!("User: {}", self.user.key());
-        // Check if user_token_a account is initialized
-        msg!("User Token A Mint: {}", self.user_token_a.mint);
-        msg!("User Token B Mint: {}", self.user_token_b.mint);
-
-        // Determine canonical ordering for the pool
-        let (expected_token_a, _expected_token_b) =
-            LiquidityPool::sort_pubkeys(self.liquidity_pool.token_a, self.liquidity_pool.token_b);
-
-        // Determine which user's account corresponds to the pool's token A.
-        let (user_token_in, lp_token_in) = if self.user_token_a.mint == expected_token_a {
-            (self.user_token_a.to_account_info(), self.lp_token_a.to_account_info())
-        } else if self.user_token_b.mint == expected_token_a {
-            (self.user_token_b.to_account_info(), self.lp_token_a.to_account_info())
-        } else {
-            // Neither account has the mint that matches the pool's canonical token A.
-            panic!("User does not have an account for the pool's token A");
-        };
+    fn transfer_from_user_to_pool_a(&self, amount: u64) -> Result<()> {
 
         let cpi_accounts = Transfer {
             from: self.user_token_a.to_account_info(),
@@ -558,7 +533,6 @@ impl<'info>SwapTokens<'info> {
             authority: self.user.to_account_info(),
         };
 
-        msg!("Executing token::transfer from user to pool A");
         token::transfer(
             CpiContext::new(
                 self.token_program.to_account_info(),
@@ -566,7 +540,6 @@ impl<'info>SwapTokens<'info> {
             ),
             amount
         )?;
-        msg!("Completed transfer_from_user_to_pool_a");
         Ok(())
     }
 
