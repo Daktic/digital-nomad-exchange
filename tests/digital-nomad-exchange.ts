@@ -549,7 +549,31 @@ it("Can Add Liquidity", async () => {
         console.log(`Expected Token Balance: ${expectedTokenBalance}`);
         assert.equal(BigInt(tokenBAccountInfo.amount), expectedTokenBalance, "Token balance B is incorrect");
 
+    });
+
+    it('Can swap tokens in reverse', async () => {
+        const amount_to_send_a = 1_000_000_000;
+        const amount_to_send_b = 500_000_000;
+
+        // Add some tokens to the liquidity pool
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b), bump)
+            .accounts({
+                liquidityPool: liquidityPoolPda,
+                mintA: tokenA,
+                userTokenA: userTokenAccountA.address,
+                mintB: tokenB,
+                userTokenB: userTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
+                lpToken: lpToken,
+                userLpTokenAccount: userAssociatedLPToken.address,
+                user: user_account.publicKey,
+            })
+            .signers([user_account])
+            .rpc();
+
         // Swap in reverse order
+        const amount_to_swap = 100_000;
         await program.methods.swapTokens(new anchor.BN(amount_to_swap),true, bump)
             .accounts({
                 liquidityPool: liquidityPoolPda,
@@ -567,18 +591,23 @@ it("Can Add Liquidity", async () => {
             .rpc();
 
         // Fetch the token account information
-        const flippedTokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
-        const flippedTokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
+        const tokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
+        const tokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
 
-        const newBalanceBFlipped = newBalanceB + BigInt(amount_to_swap);
-        const newBalanceAFlipped = (newBalanceB * newBalanceA) / newBalanceBFlipped;
-        const expectedSwapAmountFlipped = newBalanceA - newBalanceAFlipped;
+        console.log(`Token A Balance: ${tokenAAccountInfo.amount}`);
+        assert.equal(tokenAAccountInfo.amount,
+            100_000_000_000 - amount_to_send_a - amount_to_swap, "Token balance A is incorrect");
 
-        const expectedTokenBBalanceFlipped = expectedTokenBalance - BigInt(amount_to_swap);
-        const expectedTokenABalanceFlipped = BigInt(amount_to_mint) - BigInt(amount_to_send_a) - BigInt(amount_to_swap) + expectedSwapAmountFlipped;
+        console.log(`Token B Balance: ${tokenBAccountInfo.amount}`);
 
-        assert.equal(flippedTokenBAccountInfo.amount, expectedTokenBBalanceFlipped, "Token balance B is incorrect");
-        assert.equal(flippedTokenAAccountInfo.amount, expectedTokenABalanceFlipped, "Token balance A is incorrect");
+        const newBalanceA = BigInt(amount_to_send_a) + BigInt(amount_to_swap);
+        const newBalanceB = (BigInt(amount_to_send_a) * BigInt(amount_to_send_b)) / newBalanceA;
+        const expectedSwapAmount = BigInt(amount_to_send_b) - newBalanceB;
+
+        console.log(`Expected Swap Amount: ${expectedSwapAmount}`);
+        const expectedTokenBalance = BigInt(100_000_000_000) - BigInt(amount_to_send_b) + expectedSwapAmount;
+        console.log(`Expected Token Balance: ${expectedTokenBalance}`);
+        assert.equal(BigInt(tokenBAccountInfo.amount), expectedTokenBalance, "Token balance B is incorrect");
 
 
     });
