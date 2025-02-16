@@ -95,25 +95,26 @@ pub mod digital_nomad_exchange {
         let bump = ctx.bumps.liquidity_pool;
 
         // Depending on the token the user is swapping, we need to transfer the tokens from the user to the pool
+        // Would like to refactor this in the future to use a struct to be more compact
         let (token_in, token_mint_in, token_mint_in_decimals,
             token_out, token_mint_out,token_mint_out_decimals,
         ) = if reverse.unwrap_or(false) {
             (
-                ctx.accounts.user_token_a.clone(),
-                ctx.accounts.mint_a.key(),
-                ctx.accounts.mint_a.decimals,
                 ctx.accounts.lp_token_b.clone(),
-                ctx.accounts.mint_b.key(),
-                ctx.accounts.mint_b.decimals,
-            )
-        } else {
-            (
-                ctx.accounts.user_token_b.clone(),
                 ctx.accounts.mint_b.key(),
                 ctx.accounts.mint_b.decimals,
                 ctx.accounts.lp_token_a.clone(),
                 ctx.accounts.mint_a.key(),
                 ctx.accounts.mint_a.decimals,
+            )
+        } else {
+            (
+                ctx.accounts.lp_token_a.clone(),
+                ctx.accounts.mint_a.key(),
+                ctx.accounts.mint_a.decimals,
+                ctx.accounts.lp_token_b.clone(),
+                ctx.accounts.mint_b.key(),
+                ctx.accounts.mint_b.decimals,
             )
         };
 
@@ -129,14 +130,14 @@ pub mod digital_nomad_exchange {
             token_mint_out_decimals,
             amount
         );
-        msg!("Swapping {} for {}", amount, amount_b);
+        msg!("Swapping {} from {} for {} from {}", amount,token_in.key() , amount_b, token_out.key());
 
         // Transfer tokens from user to pool
         ctx.accounts.transfer_from_user_to_pool(&token_mint_in, amount, bump)?;
 
         // Transfer tokens to user
         ctx.accounts.transfer_from_pool_to_user(&token_mint_out, amount_b, bump)?;
-
+        // panic!("End of swap");
         Ok(())
     }
 }
@@ -216,40 +217,43 @@ impl LiquidityPool {
         (amount_a, amount_b)
     }
 
-    fn calculate_swap(token_balance_a: u64, token_a_decimals: u8, token_balance_b: u64, token_b_decimals: u8, amount: u64) -> u64 {
-        // Calculate the amount of tokens to swap
-        // Add token balance a and amount to get the updated affect on the pool
-        // Check if overflow
+    fn calculate_swap(
+        token_balance_in: u64,
+        token_in_decimals: u8,
+        token_balance_out: u64,
+        token_out_decimals: u8,
+        amount: u64,
+    ) -> u64 {
 
-        let token_balance_a_fixed = I64F64::from_num(token_balance_a);
-        let token_balance_b_fixed = I64F64::from_num(token_balance_b);
-        let amount_fixed = I64F64::from_num(amount);
+        msg!("token_balance_in: {}\ntoken_in_decimals: {}\ntoken_balance_out: {}\ntoken_out_decimals: {}\namount: {}", token_balance_in, token_in_decimals, token_balance_out, token_out_decimals, amount);
+        let token_balance_a_adjusted = I64F64::from_num(token_balance_in)
+            / I64F64::from_num(10u64.pow(token_in_decimals as u32));
+        msg!("Token balance token_balance_a_adjusted: {}", token_balance_a_adjusted);
+        let token_balance_b_adjusted = I64F64::from_num(token_balance_out)
+            / I64F64::from_num(10u64.pow(token_out_decimals as u32));
+        msg!("Token balance token_balance_b_adjusted: {}", token_balance_b_adjusted);
+        let amount_adjusted = I64F64::from_num(amount)
+            / I64F64::from_num(10u64.pow(token_in_decimals as u32));
+        msg!("Amount adjusted: {}", amount_adjusted);
 
+        let product = token_balance_a_adjusted * token_balance_b_adjusted;
+        msg!("Product: {}", product);
+        let new_balance_a = token_balance_a_adjusted + amount_adjusted;
+        msg!("New balance A: {}", new_balance_a);
+        let new_balance_b = product / new_balance_a;
+        msg!("New balance B: {}", new_balance_b);
 
-        match token_balance_a_fixed.checked_mul(token_balance_b_fixed) {
-            Some(product) => {
-                // Calculate the new balance of token a using the constant product formula
-                let amount_a_new = token_balance_a_fixed + amount_fixed;
-                // Calculate the new balance of token b using the constant product formula
-                let amount_b_new = (product / amount_a_new).min(token_balance_b_fixed);
-                // Return the difference between the old and new balance of token b
-                let amount_out = token_balance_b_fixed - amount_b_new;
-                amount_out.to_num::<u64>()
-            },
-            None => {
-                // Overflow, use the decimals to re multiply
-                let adjusted_token_balance_a = token_balance_a as f64 / 10f64.powi(token_a_decimals as i32);
-                let adjusted_token_balance_b = token_balance_b as f64 / 10f64.powi(token_b_decimals as i32);
-                let adjusted_amount = amount as f64 / 10f64.powi(token_a_decimals as i32);
-                // Calculate the new balance of token a using the constant product formula
-                let amount_a_new = adjusted_token_balance_a + adjusted_amount;
-                // Calculate the new balance of token b using the constant product formula
-                let amount_b_new = (adjusted_token_balance_a * adjusted_token_balance_b) / amount_a_new;
-                // We then need to transfer the decimal places
-                ((amount_b_new * 10f64.powi(token_a_decimals as i32)) as u64).min(token_balance_b)
-            }
-        }
+        let amount_out_adjusted = token_balance_b_adjusted - new_balance_b;
+        msg!("Amount out adjusted: {}", amount_out_adjusted);
+        let amount_out = amount_out_adjusted
+            * I64F64::from_num(10u64.pow(token_out_decimals as u32));
+        msg!("Amount out: {}", amount_out);
+
+        let final_amount = amount_out.to_num::<u64>().min(token_balance_out);
+        msg!("Final amount: {}", final_amount);
+        final_amount
     }
+
 
     fn sort_pubkeys(pubkey_a: Pubkey, pubkey_b: Pubkey) -> (Pubkey, Pubkey) {
         if pubkey_a < pubkey_b {
@@ -569,6 +573,8 @@ impl<'info>SwapTokens<'info> {
         msg!("Transferring tokens from user to pool");
         let (user_account, lp_account) = self.get_matching_accounts(token_mint);
 
+        msg!("Transfering {} from user {} to pool {}", amount, user_account.key(), lp_account.key());
+
         let cpi_accounts = Transfer {
             from: user_account,
             to: lp_account,
@@ -596,6 +602,8 @@ impl<'info>SwapTokens<'info> {
         // Determine which token the user is swapping to
         let (user_account, lp_account) = self.get_matching_accounts(token_mint);
 
+        msg!("Transfering {} from pool {} to user {}", amount, user_account.key(), lp_account.key());
+
         let cpi_accounts = Transfer {
             from: lp_account,
             to: user_account,
@@ -612,7 +620,7 @@ impl<'info>SwapTokens<'info> {
             mint_b.as_ref(),
             &[bump],
         ];
-        msg!("Amount: {:?}", amount);
+
         let signer_seeds = &[&seeds[..]];
 
         token::transfer(
