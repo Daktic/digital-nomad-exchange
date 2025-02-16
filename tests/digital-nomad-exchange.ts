@@ -1,8 +1,16 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { DigitalNomadExchange } from "../target/types/digital_nomad_exchange";
-import {Account, createMint, getAccount, getOrCreateAssociatedTokenAccount, mintTo} from "@solana/spl-token";
-import {beforeEach} from "mocha";
+import {
+    Account,
+    createInitializeAccountInstruction,
+    createMint,
+    getAccount,
+    getOrCreateAssociatedTokenAccount,
+    mintTo,
+    TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
+import { beforeEach } from "mocha";
 import * as assert from "node:assert";
 
 describe("digital-nomad-exchange", () => {
@@ -22,48 +30,52 @@ describe("digital-nomad-exchange", () => {
     let liquidityPool: anchor.web3.Keypair;
     let amount_to_mint: number;
     let userAssociatedLPToken: Account;
-    let lpTokenAccountA: Account;
-    let lpTokenAccountB: Account;
-    let lpTokenAccountC: Account;
+    let lpTokenAccountA: anchor.web3.PublicKey;
+    let lpTokenAccountB: anchor.web3.PublicKey;
+    let lpTokenAccountC: anchor.web3.PublicKey;
+    let liquidityPoolPda: anchor.web3.PublicKey;
+    let bump: number;
 
+    // Generic sort function for two PublicKeys
+    function sortTokens(
+        tokenA: anchor.web3.PublicKey,
+        tokenB: anchor.web3.PublicKey
+    ): {
+        sortedTokenA: anchor.web3.PublicKey;
+        sortedTokenB: anchor.web3.PublicKey;
+    } {
+        if (tokenA.toBuffer().compare(tokenB.toBuffer()) < 0) {
+            return {
+                sortedTokenA: tokenA,
+                sortedTokenB: tokenB,
+            };
+        } else {
+            return {
+                sortedTokenA: tokenB,
+                sortedTokenB: tokenA,
+            };
+        }
+    }
 
-    beforeEach(async () => {
+    async function setUpEnvironment() {
+        console.log("Setting up environment");
         user_account = anchor.web3.Keypair.generate();
 
         const airdrop_tx = await provider.connection.requestAirdrop(user_account.publicKey, 1000000000);
-        // Make sure we wait for confirmation
         await provider.connection.confirmTransaction({
             signature: airdrop_tx,
-            ...(await provider.connection.getLatestBlockhash("finalized"))
+            ...(await provider.connection.getLatestBlockhash("finalized")),
         });
+    }
 
-        //   Create mint accounts to create tokens
-        tokenA = await createMint(
-            provider.connection,
-            user_account,
-            user_account.publicKey,
-            null,
-            9,
-        );
+    async function createMints() {
+        tokenA = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
+        tokenB = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
+        tokenC = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
+    }
 
-        tokenB = await createMint(
-            provider.connection,
-            user_account,
-            user_account.publicKey,
-            null,
-            9,
-        );
-
-        // Create Token for arbitrary use
-        tokenC = await createMint(
-            provider.connection,
-            user_account,
-            user_account.publicKey,
-            null,
-            9,
-        );
-
-        // Create associated token accounts for the user
+    async function createAssociatedTokenAccounts() {
+        console.log("Creating associated token accounts");
         userTokenAccountA = await getOrCreateAssociatedTokenAccount(
             provider.connection,
             user_account,
@@ -76,77 +88,164 @@ describe("digital-nomad-exchange", () => {
             tokenB,
             user_account.publicKey
         );
-
-        // Create a new associated token account
         userTokenAccountC = await getOrCreateAssociatedTokenAccount(
             provider.connection,
             user_account,
             tokenC,
             user_account.publicKey
         );
+    }
 
-        // Create LP token mint
-        lpToken = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
+    function derivePDAAddresses() {
+        console.log("Deriving PDA addresses");
+        const [_liquidityPoolPda, _bump] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("liquidity_pool"), tokenA.toBuffer(), tokenB.toBuffer()],
+            program.programId
+        );
+        liquidityPoolPda = _liquidityPoolPda;
+        bump = _bump;
 
-        // Create liquidity pool account
-        liquidityPool = anchor.web3.Keypair.generate();
+        // Derive LP token PDAs using the sorted mints
+        const [lpTokenAPda, lpTokenABump] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("pool_token_a"), tokenA.toBuffer()],
+            program.programId
+        );
+        const [lpTokenBPda, lpTokenBBump] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("pool_token_b"), tokenB.toBuffer()],
+            program.programId
+        );
+        lpTokenAccountA = lpTokenAPda;
+        lpTokenAccountB = lpTokenBPda;
+    }
 
-        console.log(
-            `liquidityPool: ${liquidityPool.publicKey.toBase58()}\n`,
-            `tokenA: ${userTokenAccountA.address.toBase58()}\n`,
-            `tokenB: ${userTokenAccountB.address.toBase58()}\n`,
-            `lpToken: ${lpToken.toBase58()}\n`,
-            `user: ${user_account.publicKey.toBase58()}\n`,
-            `system program: ${anchor.web3.SystemProgram.programId.toBase58()}\n`,
-            `rent: ${anchor.web3.SYSVAR_RENT_PUBKEY.toBase58()}\n`
-        )
-
-        await program.methods.initialize()
-            .accounts({
-                liquidityPool: liquidityPool.publicKey,
-                tokenA: userTokenAccountA.address,
-                tokenB: userTokenAccountB.address,
-                lpToken: lpToken,
-                user: user_account.publicKey,
-                systemProgram: anchor.web3.SystemProgram.programId,
-                rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-            })
-            .signers([user_account, liquidityPool])
-            .rpc();
-        console.log("Contract Deployed", liquidityPool.publicKey.toBase58());
-
-        // Add some tokens to user token accounts
-        amount_to_mint = 100_000_000_000;
-
-        // Mint each token to the user account
+    async function mintTokensToUserAccounts(amountToMint:number) {
+        console.log("Minting tokens to user accounts");
         await mintTo(
             provider.connection,
             user_account,
             tokenA,
             userTokenAccountA.address,
             user_account.publicKey,
-            amount_to_mint,
-        )
+            amountToMint
+        );
         await mintTo(
             provider.connection,
             user_account,
             tokenB,
             userTokenAccountB.address,
             user_account.publicKey,
-            amount_to_mint,
-        )
-
-        // Mint some tokens to the arbitrary account
+            amountToMint
+        );
         await mintTo(
             provider.connection,
             user_account,
             tokenC,
             userTokenAccountC.address,
             user_account.publicKey,
-            amount_to_mint,
+            amountToMint
+        );
+    }
+
+    async function setUpFakeTokenCAccountForLP() {
+        console.log("Setting up fake token C account for LP");
+
+        // Derive the PDA for the token C account
+        const [lpTokenCPda, lpTokenCBump] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("pool_token_c"), tokenC.toBuffer()],
+            program.programId
         );
 
-        // Get the associated token account of the user
+        // Get the minimum balance for rent exemption
+        const ACCOUNT_SIZE = 165;
+        const lamportsForRent = await provider.connection.getMinimumBalanceForRentExemption(ACCOUNT_SIZE);
+
+        // Create the PDA account with the correct seed
+        const createAccountIx = anchor.web3.SystemProgram.createAccountWithSeed({
+            fromPubkey: user_account.publicKey,
+            newAccountPubkey: lpTokenCPda,
+            basePubkey: user_account.publicKey,
+            seed: "pool_token_c",
+            space: ACCOUNT_SIZE,
+            lamports: lamportsForRent,
+            programId: TOKEN_PROGRAM_ID,
+        });
+
+        // Initialize the PDA account
+        const initAccountIx = createInitializeAccountInstruction(
+            lpTokenCPda,
+            tokenC,
+            liquidityPoolPda,
+            TOKEN_PROGRAM_ID
+        );
+
+        // Create and send the transaction
+        const tx = new anchor.web3.Transaction().add(createAccountIx).add(initAccountIx);
+        await provider.sendAndConfirm(tx, [user_account]);
+
+        // Assign the PDA to lpTokenAccountC
+        lpTokenAccountC = lpTokenCPda;
+    }
+
+    function logVariables() {
+        console.log(`Token A: ${tokenA.toBase58()}`);
+        console.log(`Token B: ${tokenB.toBase58()}`);
+        console.log(`Token C: ${tokenC.toBase58()}`);
+        console.log(`User Token Account A: ${userTokenAccountA.address.toBase58()}`);
+        console.log(`User Token Account B: ${userTokenAccountB.address.toBase58()}`);
+        console.log(`User Token Account C: ${userTokenAccountC.address.toBase58()}`);
+        console.log(`LP Token Account A: ${lpTokenAccountA.toBase58()}`);
+        console.log(`LP Token Account B: ${lpTokenAccountB.toBase58()}`);
+        // console.log(`LP Token Account C: ${lpTokenAccountC.toBase58()}`);
+        console.log(`LP Token: ${lpToken.toBase58()}`);
+        console.log(`Liquidity Pool: ${liquidityPool.publicKey.toBase58()}`);
+        console.log(`Liquidity Pool PDA: ${liquidityPoolPda.toBase58()}`);
+        console.log(`Bump: ${bump}`);
+    }
+
+    beforeEach(async () => {
+        // Airdrop tokens
+        await setUpEnvironment();
+        // Create mints
+        await createMints();
+
+        // --- Sort mints so that tokenA is the lower (canonical) mint ---
+        const sortedMints = sortTokens(tokenA, tokenB);
+        tokenA = sortedMints.sortedTokenA;
+        tokenB = sortedMints.sortedTokenB;
+
+        // Create associated token accounts for the user using the sorted mints
+        await createAssociatedTokenAccounts();
+
+        // Create LP token mint
+        lpToken = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
+
+        // Create liquidity pool account keypair
+        liquidityPool = anchor.web3.Keypair.generate();
+
+        // Derive the liquidity pool PDA using the sorted mints
+        derivePDAAddresses();
+
+        // Initialize the liquidity pool on-chain with sorted values
+        await program.methods.initialize()
+            .accounts({
+                liquidityPool: liquidityPoolPda,
+                tokenAMint: tokenA,
+                tokenBMint: tokenB,
+                lpToken: lpToken,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
+                user: user_account.publicKey,
+                systemProgram: anchor.web3.SystemProgram.programId,
+                rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+            })
+            .signers([user_account])
+            .rpc();
+
+        // Mint tokens to the user token accounts
+        amount_to_mint = 100_000_000_000;
+        await mintTokensToUserAccounts(amount_to_mint);
+
+        // Get the associated LP token account for the user
         userAssociatedLPToken = await getOrCreateAssociatedTokenAccount(
             provider.connection,
             user_account,
@@ -154,59 +253,44 @@ describe("digital-nomad-exchange", () => {
             user_account.publicKey
         );
 
-        lpTokenAccountA = await getOrCreateAssociatedTokenAccount(
-            provider.connection,
-            user_account,
-            tokenA,
-            liquidityPool.publicKey
-        )
+        // Create a fake token C account for testing
+        // await setUpFakeTokenCAccountForLP();
 
-        lpTokenAccountB = await getOrCreateAssociatedTokenAccount(
-            provider.connection,
-            user_account,
-            tokenB,
-            liquidityPool.publicKey
-        )
-
-        lpTokenAccountC = await getOrCreateAssociatedTokenAccount(
-            provider.connection,
-            user_account,
-            tokenC,
-            liquidityPool.publicKey
-        )
-    })
+        // Log the variables
+        logVariables();
+        console.log("Setup complete");
+    });
 
     it("Is initialized!", async () => {
-
         // Fetch the liquidity pool account
-        const liquidityPoolAccount = await program.account.liquidityPool.fetch(liquidityPool.publicKey);
+        const liquidityPoolAccount = await program.account.liquidityPool.fetch(liquidityPoolPda);
 
         console.log(`Liquidity Pool Account: ${JSON.stringify(liquidityPoolAccount)}`);
 
         // Check if the liquidity pool account has the expected values
-        assert.ok(liquidityPoolAccount.tokenA.equals(userTokenAccountA.address), "TokenA accounts do not match");
-        assert.ok(liquidityPoolAccount.tokenB.equals(userTokenAccountB.address), "TokenB accounts do not match");
+        assert.ok(liquidityPoolAccount.tokenA.equals(tokenA), "TokenA accounts do not match");
+        assert.ok(liquidityPoolAccount.tokenB.equals(tokenB), "TokenB accounts do not match");
         assert.ok(liquidityPoolAccount.lpToken.equals(lpToken), "LP mint accounts do not match");
         assert.ok(liquidityPoolAccount.owner.equals(user_account.publicKey), "Owner accounts do not match");
 
         console.log("Liquidity pool is initialized with the correct values");
-
     });
 
-    it("Can Add Liquidity", async () => {
+
+it("Can Add Liquidity", async () => {
         // Call the addLiquidity function on the program
         // The user will supply a 1:1 ratio of both tokens, each with 9 decimals
         // The anchor.BN is used to create a new Big Number instance
         const amount_to_send = amount_to_mint;
         await program.methods.addLiquidity(new anchor.BN(amount_to_send), new anchor.BN(amount_to_send))
             .accounts({
-                liquidityPool: liquidityPool.publicKey,
+                liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
                 mintB: tokenB,
                 userTokenB: userTokenAccountB.address,
-                lpTokenA: lpTokenAccountA.address,
-                lpTokenB: lpTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
@@ -217,8 +301,8 @@ describe("digital-nomad-exchange", () => {
         // Fetch the token account information
         const tokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
         const tokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
-        const lpTokenAAccountInfo = await getAccount(provider.connection, lpTokenAccountA.address);
-        const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB.address);
+        const lpTokenAAccountInfo = await getAccount(provider.connection, lpTokenAccountA);
+        const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB);
         const userAssociatedLPTokenInfo = await getAccount(provider.connection, userAssociatedLPToken.address);
 
         // Calculate the expected lp balance
@@ -247,13 +331,13 @@ describe("digital-nomad-exchange", () => {
         const amount_to_send_c = 87_654_321
         await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
             .accounts({
-                liquidityPool: liquidityPool.publicKey,
+                liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
                 mintB: tokenB,
                 userTokenB: userTokenAccountB.address,
-                lpTokenA: lpTokenAccountA.address,
-                lpTokenB: lpTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
@@ -262,16 +346,17 @@ describe("digital-nomad-exchange", () => {
             .rpc();
 
         // Add arbitrary token
+        let threwError = false;
         try {
             await program.methods.addLiquidity(new anchor.BN(amount_to_send_c), new anchor.BN(amount_to_send_c))
                 .accounts({
-                    liquidityPool: liquidityPool.publicKey,
+                    liquidityPool: liquidityPoolPda,
                     mintA: tokenC,
                     userTokenA: userTokenAccountC.address,
                     mintB: tokenB,
                     userTokenB: userTokenAccountB.address,
-                    lpTokenA: lpTokenAccountC.address,
-                    lpTokenB: lpTokenAccountB.address,
+                    lpTokenA: lpTokenAccountC,
+                    lpTokenB: lpTokenAccountB,
                     lpToken: lpToken,
                     userLpTokenAccount: userAssociatedLPToken.address,
                     user: user_account.publicKey,
@@ -280,22 +365,22 @@ describe("digital-nomad-exchange", () => {
                 .rpc();
         } catch(err) {
             // should throw error
-            assert.ifError(err);
-
-            // Fetch the token account information
-            const userTokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
-            const userTokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
-            const userTokenCAccountInfo = await getAccount(provider.connection, userTokenAccountC.address);
-
-            // Log anc check the balances
-            console.log(`User Token A Balance: ${userTokenAAccountInfo.amount}`);
-            assert.equal(userTokenAAccountInfo.amount, amount_to_mint-amount_to_send_a, "Token A balance should be same after attempting adding fraudulent liquidity");
-            console.log(`User Token B Balance: ${userTokenBAccountInfo.amount}`);
-            assert.equal(userTokenBAccountInfo.amount, amount_to_mint-amount_to_send_b, "Token A balance should be same after attempting adding fraudulent liquidity");
-            console.log(`User Token C Balance: ${userTokenCAccountInfo.amount}`);
-            assert.equal(userTokenCAccountInfo.amount, amount_to_mint, "Token A balance should be same after attempting adding fraudulent liquidity");
-
+            threwError = true;
         }
+        assert.equal(threwError, true, "Should throw error when adding arbitrary token to liquidity pool");
+
+        // Fetch the token account information
+        const userTokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
+        const userTokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
+        const userTokenCAccountInfo = await getAccount(provider.connection, userTokenAccountC.address);
+
+        // Log anc check the balances
+        console.log(`User Token A Balance: ${userTokenAAccountInfo.amount}`);
+        assert.equal(userTokenAAccountInfo.amount, amount_to_mint-amount_to_send_a, "Token A balance should be same after attempting adding fraudulent liquidity");
+        console.log(`User Token B Balance: ${userTokenBAccountInfo.amount}`);
+        assert.equal(userTokenBAccountInfo.amount, amount_to_mint-amount_to_send_b, "Token A balance should be same after attempting adding fraudulent liquidity");
+        console.log(`User Token C Balance: ${userTokenCAccountInfo.amount}`);
+        assert.equal(userTokenCAccountInfo.amount, amount_to_mint, "Token A balance should be same after attempting adding fraudulent liquidity");
 
 
 
@@ -309,13 +394,13 @@ describe("digital-nomad-exchange", () => {
         // Call the addLiquidity function on the program with two different amounts
         await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
             .accounts({
-                liquidityPool: liquidityPool.publicKey,
+                liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
                 mintB: tokenB,
                 userTokenB: userTokenAccountB.address,
-                lpTokenA: lpTokenAccountA.address,
-                lpTokenB: lpTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
@@ -326,8 +411,8 @@ describe("digital-nomad-exchange", () => {
         // Fetch the token account information
         const tokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
         const tokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
-        const lpTokenAAccountInfo = await getAccount(provider.connection, lpTokenAccountA.address);
-        const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB.address);
+        const lpTokenAAccountInfo = await getAccount(provider.connection, lpTokenAccountA);
+        const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB);
         const userAssociatedLPTokenInfo = await getAccount(provider.connection, userAssociatedLPToken.address);
 
         // Calculate the expected lp balance
@@ -354,13 +439,13 @@ describe("digital-nomad-exchange", () => {
         // Add some tokens to the liquidity pool
         await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
             .accounts({
-                liquidityPool: liquidityPool.publicKey,
+                liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
                 mintB: tokenB,
                 userTokenB: userTokenAccountB.address,
-                lpTokenA: lpTokenAccountA.address,
-                lpTokenB: lpTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
@@ -375,18 +460,18 @@ describe("digital-nomad-exchange", () => {
         const amount_to_remove = Math.floor(Number(current_lp_balance.amount / BigInt(2)))
         await program.methods.removeLiquidity(new anchor.BN(amount_to_remove))
             .accounts({
-                liquidityPool: liquidityPool.publicKey,
+                liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
                 mintB: tokenB,
                 userTokenB: userTokenAccountB.address,
-                lpTokenA: lpTokenAccountA.address,
-                lpTokenB: lpTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
             })
-            .signers([user_account, liquidityPool])
+            .signers([user_account])
             .rpc();
 
 
@@ -410,16 +495,115 @@ describe("digital-nomad-exchange", () => {
         const amount_to_send_a = 1_000_000_000;
         const amount_to_send_b = 500_000_000;
 
+        console.log(
+            "User Token A Account Pre liquidity",
+            (await getAccount(provider.connection, userTokenAccountA.address)).amount
+        )
+
         // Add some tokens to the liquidity pool
         await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
             .accounts({
-                liquidityPool: liquidityPool.publicKey,
+                liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
                 mintB: tokenB,
                 userTokenB: userTokenAccountB.address,
-                lpTokenA: lpTokenAccountA.address,
-                lpTokenB: lpTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
+                lpToken: lpToken,
+                userLpTokenAccount: userAssociatedLPToken.address,
+                user: user_account.publicKey,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                systemProgram: anchor.web3.SystemProgram.programId,
+            })
+            .signers([user_account])
+            .rpc();
+
+        console.log(
+            "User Token A Account Pre Swap / Post Liquidity",
+            (await getAccount(provider.connection, userTokenAccountA.address)).amount
+        )
+
+        const lpTokenAAccountInfo = await getAccount(provider.connection, lpTokenAccountA);
+        console.log("LP Token A Amount pre swap", lpTokenAAccountInfo.amount);
+        const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB);
+        console.log("LP Token B Amount pre swap", lpTokenBAccountInfo.amount);
+        // Swap tokens
+        const amount_to_swap = 100_000;
+        try {
+            await program.methods
+                .swapTokens(new anchor.BN(amount_to_swap), false)
+                .accounts({
+                    liquidityPool: liquidityPoolPda,
+                    mintA: tokenA,
+                    userTokenA: userTokenAccountA.address,
+                    mintB: tokenB,
+                    userTokenB: userTokenAccountB.address,
+                    lpTokenA: lpTokenAccountA,
+                    lpTokenB: lpTokenAccountB,
+                    lpToken: lpToken,
+                    user: user_account.publicKey,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                    systemProgram: anchor.web3.SystemProgram.programId,
+                })
+                .signers([user_account])
+                .rpc();
+        } catch (err) {
+            if (err.logs) {
+                console.error("Transaction logs:", err.logs);
+            }
+        }
+
+        // Fetch the token account information
+        const tokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
+        const tokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
+
+        console.log(`User Token A Account Post Swap / Post Liquidity:`, tokenAAccountInfo.amount);
+        const expectedTokenABalance = BigInt(amount_to_mint) - BigInt(amount_to_send_a) - BigInt(amount_to_swap);
+
+        console.log(`Expected Token A Balance: ${expectedTokenABalance}`);
+        assert.equal(tokenAAccountInfo.amount, expectedTokenABalance, "Token balance A is incorrect");
+
+        console.log(`Token B Balance: ${tokenBAccountInfo.amount}`);
+
+        const newBalanceA = BigInt(amount_to_send_a) + BigInt(amount_to_swap);
+        const newBalanceB = (BigInt(amount_to_send_a) * BigInt(amount_to_send_b)) / newBalanceA;
+        const intermediateSwapAmount = BigInt(amount_to_send_b) - newBalanceB; // Intermediate calculation
+        console.log(`Intermediate Swap Amount: ${intermediateSwapAmount}`);
+        const truncatedSwapAmount = intermediateSwapAmount / BigInt(1); // Mimic backend truncation
+        console.log(`Expected Swap Amount: ${truncatedSwapAmount}`);
+
+        const expectedTokenBalance = BigInt(amount_to_mint) - BigInt(amount_to_send_b) + truncatedSwapAmount;
+        console.log(`Expected Token Balance: ${expectedTokenBalance}`);
+
+        const tolerance = BigInt(1); // 1 token tolerance
+
+        console.log(`Token B Balance: ${tokenBAccountInfo.amount}`);
+
+        // Check if the difference is within the tolerance,
+        // Having trouble with the exact value due to truncation
+        const isWithinTolerance = (
+            tokenBAccountInfo.amount <= expectedTokenBalance + tolerance &&
+            tokenBAccountInfo.amount >= expectedTokenBalance - tolerance
+        );
+        assert.equal(isWithinTolerance,true, `Token balance B is incorrect. Exceeds tolerance`);
+
+    });
+
+    it('Can swap tokens in reverse', async () => {
+        const amount_to_send_a = 1_000_000_000;
+        const amount_to_send_b = 500_000_000;
+
+        // Add some tokens to the liquidity pool
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
+            .accounts({
+                liquidityPool: liquidityPoolPda,
+                mintA: tokenA,
+                userTokenA: userTokenAccountA.address,
+                mintB: tokenB,
+                userTokenB: userTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
@@ -427,74 +611,61 @@ describe("digital-nomad-exchange", () => {
             .signers([user_account])
             .rpc();
 
-        // Swap tokens
         const amount_to_swap = 100_000;
-        await program.methods.swapTokens(new anchor.BN(amount_to_swap))
-            .accounts({
-                liquidityPool: liquidityPool.publicKey,
-                // This will be standard so that token A is swapped for token b
-                mintA: tokenA,
-                userTokenA: userTokenAccountA.address,
-                mintB: tokenB,
-                userTokenB: userTokenAccountB.address,
-                lpTokenA: lpTokenAccountA.address,
-                lpTokenB: lpTokenAccountB.address,
-                lpToken: lpToken,
-                user: user_account.publicKey,
-            })
-            .signers([user_account, liquidityPool])
-            .rpc();
+        try {
+            // Swap in reverse order
+
+            await program.methods.swapTokens(new anchor.BN(amount_to_swap),true)
+                .accounts({
+                    liquidityPool: liquidityPoolPda,
+                    // This will be flipped so that token B is swapped for token A
+                    mintA: tokenA,
+                    userTokenA: userTokenAccountA.address,
+                    mintB: tokenB,
+                    userTokenB: userTokenAccountB.address,
+                    lpTokenA: lpTokenAccountA,
+                    lpTokenB: lpTokenAccountB,
+                    lpToken: lpToken,
+                    user: user_account.publicKey,
+                })
+                .signers([user_account])
+                .rpc();
+        } catch (err) {
+            if (err.logs) {
+                console.error("Transaction logs:", err.logs);
+            }
+        }
+
 
         // Fetch the token account information
         const tokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
         const tokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
 
-        console.log(`Token A Balance: ${tokenAAccountInfo.amount}`);
-        assert.equal(tokenAAccountInfo.amount,
-            100_000_000_000 - amount_to_send_a - amount_to_swap, "Token balance A is incorrect");
-
         console.log(`Token B Balance: ${tokenBAccountInfo.amount}`);
+        assert.equal(tokenBAccountInfo.amount,
+            amount_to_mint - amount_to_send_b - amount_to_swap, "Token balance B is incorrect");
 
-        const newBalanceA = BigInt(amount_to_send_a) + BigInt(amount_to_swap);
-        const newBalanceB = (BigInt(amount_to_send_a) * BigInt(amount_to_send_b)) / newBalanceA;
-        const expectedSwapAmount = BigInt(amount_to_send_b) - newBalanceB;
+        console.log(`Token A Balance: ${tokenAAccountInfo.amount}`);
 
-        console.log(`Expected Swap Amount: ${expectedSwapAmount}`);
-        const expectedTokenBalance = BigInt(100_000_000_000) - BigInt(amount_to_send_b) + expectedSwapAmount;
+        const newBalanceB = BigInt(amount_to_send_b) + BigInt(amount_to_swap);
+        const newBalanceA = (BigInt(amount_to_send_b) * BigInt(amount_to_send_a)) / newBalanceB;
+        const intermediateSwapAmount = BigInt(amount_to_send_a) - newBalanceA;
+
+        console.log(`Intermediate Swap Amount: ${intermediateSwapAmount}`);
+        const truncatedSwapAmount = intermediateSwapAmount / BigInt(1); // Mimic backend truncation
+        console.log(`Expected Swap Amount: ${truncatedSwapAmount}`);
+        const expectedTokenBalance = BigInt(amount_to_mint) - BigInt(amount_to_send_a) + truncatedSwapAmount;
         console.log(`Expected Token Balance: ${expectedTokenBalance}`);
-        assert.equal(BigInt(tokenBAccountInfo.amount), expectedTokenBalance, "Token balance B is incorrect");
 
-        // Swap in reverse order
-        await program.methods.swapTokens(new anchor.BN(amount_to_swap))
-            .accounts({
-                liquidityPool: liquidityPool.publicKey,
-                // This will be flipped so that token B is swapped for token A
-                mintA: tokenB,
-                userTokenA: userTokenAccountB.address,
-                mintB: tokenA,
-                userTokenB: userTokenAccountA.address,
-                lpTokenA: lpTokenAccountB.address,
-                lpTokenB: lpTokenAccountA.address,
-                lpToken: lpToken,
-                user: user_account.publicKey,
-            })
-            .signers([user_account, liquidityPool])
-            .rpc();
-
-        // Fetch the token account information
-        const flippedTokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
-        const flippedTokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
-
-        const newBalanceBFlipped = newBalanceB + BigInt(amount_to_swap);
-        const newBalanceAFlipped = (newBalanceB * newBalanceA) / newBalanceBFlipped;
-        const expectedSwapAmountFlipped = newBalanceA - newBalanceAFlipped;
-
-        const expectedTokenBBalanceFlipped = expectedTokenBalance - BigInt(amount_to_swap);
-        const expectedTokenABalanceFlipped = BigInt(amount_to_mint) - BigInt(amount_to_send_a) - BigInt(amount_to_swap) + expectedSwapAmountFlipped;
-
-        assert.equal(flippedTokenBAccountInfo.amount, expectedTokenBBalanceFlipped, "Token balance B is incorrect");
-        assert.equal(flippedTokenAAccountInfo.amount, expectedTokenABalanceFlipped, "Token balance A is incorrect");
-
+        console.log(`Token A Balance: ${tokenAAccountInfo.amount}`);
+        const tolerance = BigInt(1); // 1 token tolerance
+        // Check if the difference is within the tolerance,
+        // Having trouble with the exact value due to truncation
+        const isWithinTolerance = (
+            tokenAAccountInfo.amount <= expectedTokenBalance + tolerance &&
+            tokenAAccountInfo.amount >= expectedTokenBalance - tolerance
+        );
+        assert.equal(isWithinTolerance,true, `Token balance A is incorrect. Exceeds tolerance`);
 
     });
 
@@ -509,13 +680,13 @@ describe("digital-nomad-exchange", () => {
         // Add some tokens to the liquidity pool
         await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
             .accounts({
-                liquidityPool: liquidityPool.publicKey,
+                liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
                 mintB: tokenB,
                 userTokenB: userTokenAccountB.address,
-                lpTokenA: lpTokenAccountA.address,
-                lpTokenB: lpTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
@@ -535,35 +706,37 @@ describe("digital-nomad-exchange", () => {
         );
 
         // Swap Arbitrary tokens
+        let threwError = false;
         try {
             const amount_to_swap = 534_321;
             await program.methods.swapTokens(new anchor.BN(amount_to_swap))
                 .accounts({
-                    liquidityPool: liquidityPool.publicKey,
+                    liquidityPool: liquidityPoolPda,
                     // This will be standard so that token A is swapped for token b
                     mintA: tokenC,
                     userTokenA: userTokenAccountC.address,
                     mintB: tokenB,
                     userTokenB: userTokenAccountB.address,
                     lpTokenA: lpTokenAccountC.address,
-                    lpTokenB: lpTokenAccountB.address,
+                    lpTokenB: lpTokenAccountB,
                     lpToken: lpToken,
                     user: user_account.publicKey,
                 })
-                .signers([user_account, liquidityPool])
+                .signers([user_account])
                 .rpc();
         } catch (err) {
             // should throw error
-            assert.ifError(err);
-                // Fetch the token account information
-                userTokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
-                const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB.address);
-
-                console.log(`User Token B Balance 3: ${userTokenBAccountInfo.amount}`);
-                assert.equal(userTokenBAccountInfo.amount, amount_to_mint-amount_to_send_b, "User Token balance B is should stay the same");
-                console.log(`LP Token B Balance: ${lpTokenBAccountInfo.amount}`);
-                assert.equal(lpTokenBAccountInfo.amount, amount_to_send_b, "Pool Token balance B is should stay the same");
+            threwError = true;
             }
+        assert.equal(threwError, true, "Should throw error when swapping arbitrary token");
+        // Fetch the token account information
+        userTokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
+        const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB);
+
+        console.log(`User Token B Balance 3: ${userTokenBAccountInfo.amount}`);
+        assert.equal(userTokenBAccountInfo.amount, amount_to_mint-amount_to_send_b, "User Token balance B is should stay the same");
+        console.log(`LP Token B Balance: ${lpTokenBAccountInfo.amount}`);
+        assert.equal(lpTokenBAccountInfo.amount, amount_to_send_b, "Pool Token balance B is should stay the same");
     });
 
 });

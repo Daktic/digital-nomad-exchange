@@ -6,6 +6,7 @@ skip-lint = false
 
 [programs.localnet]
 digital_nomad_exchange = "D4JCMSe8bh1GcuPyGjicJ4JbdcmWmAPLvcuDqgpVSWFB"
+dne_factory = "F4GTZaky3u6tNQBmYEEzPbpSCVPaKc3ZYjzVpM8NEx3Y"
 
 [registry]
 url = "https://api.apr.dev"
