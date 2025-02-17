@@ -171,6 +171,7 @@ struct LPDepositRequest {
 }
 
 impl LiquidityPool {
+    const FEE_PERCENTAGE: f64 = 0.003; // 0.3% fee
 
     fn calculate_lp_amount_to_mint(deposit_request: LPDepositRequest) -> u64 {
         // Check if the pool has no liquidity
@@ -224,33 +225,41 @@ impl LiquidityPool {
         token_out_decimals: u8,
         amount: u64,
     ) -> u64 {
+        let fee_percentage = I64F64::from_num(Self::FEE_PERCENTAGE);
+        let amount_in_adjusted = I64F64::from_num(amount) * (I64F64::from_num(1) - fee_percentage);
+        msg!("Amount in adjusted for fee: {}", amount_in_adjusted);
 
-        msg!("token_balance_in: {}\ntoken_in_decimals: {}\ntoken_balance_out: {}\ntoken_out_decimals: {}\namount: {}", token_balance_in, token_in_decimals, token_balance_out, token_out_decimals, amount);
         let token_balance_a_adjusted = I64F64::from_num(token_balance_in)
             / I64F64::from_num(10u64.pow(token_in_decimals as u32));
         msg!("Token balance token_balance_a_adjusted: {}", token_balance_a_adjusted);
+
         let token_balance_b_adjusted = I64F64::from_num(token_balance_out)
             / I64F64::from_num(10u64.pow(token_out_decimals as u32));
         msg!("Token balance token_balance_b_adjusted: {}", token_balance_b_adjusted);
-        let amount_adjusted = I64F64::from_num(amount)
+
+        let amount_adjusted = amount_in_adjusted
             / I64F64::from_num(10u64.pow(token_in_decimals as u32));
         msg!("Amount adjusted: {}", amount_adjusted);
 
         let product = token_balance_a_adjusted * token_balance_b_adjusted;
         msg!("Product: {}", product);
+
         let new_balance_a = token_balance_a_adjusted + amount_adjusted;
         msg!("New balance A: {}", new_balance_a);
+
         let new_balance_b = product / new_balance_a;
         msg!("New balance B: {}", new_balance_b);
 
         let amount_out_adjusted = token_balance_b_adjusted - new_balance_b;
         msg!("Amount out adjusted: {}", amount_out_adjusted);
+
         let amount_out = amount_out_adjusted
             * I64F64::from_num(10u64.pow(token_out_decimals as u32));
         msg!("Amount out: {}", amount_out);
 
         let final_amount = amount_out.to_num::<u64>().min(token_balance_out);
         msg!("Final amount: {}", final_amount);
+
         final_amount
     }
 
@@ -821,8 +830,11 @@ mod tests {
         let token_balance_a = 1000;
         let token_balance_b = 1000;
         let amount = 100;
+        let fee_percentage = 0.003;
+        let amount_after_fee = amount as f64 * (1.0 - fee_percentage);
+        let expected_amount_b = (amount_after_fee * token_balance_b as f64 / (token_balance_a as f64 + amount_after_fee)) as u64;
         let amount_b = LiquidityPool::calculate_swap(token_balance_a,9, token_balance_b,9, amount);
-        assert_eq!(amount_b, 90, "Should swap 90.909 ~round down to 90 token B");
+        assert_eq!(amount_b, expected_amount_b, "Should swap 90.66 ~round down to 90 token B");
     }
 
     #[test]
@@ -830,8 +842,11 @@ mod tests {
         let token_balance_a = 34556;
         let token_balance_b = 12345;
         let amount = 100;
+        let fee_percentage = 0.003;
+        let amount_after_fee = amount as f64 * (1.0 - fee_percentage);
+        let expected_amount_b = (amount_after_fee * token_balance_b as f64 / (token_balance_a as f64 + amount_after_fee)) as u64;
         let amount_b = LiquidityPool::calculate_swap(token_balance_a,9, token_balance_b,9, amount);
-        assert_eq!(amount_b, 35, "Should swap 35 token B");
+        assert_eq!(amount_b, 35, "Should swap 35.5 ~35 token B");
     }
 
     #[test]
@@ -839,8 +854,11 @@ mod tests {
         let token_balance_a = 1000 * 10u64.pow(9);
         let token_balance_b = 1000 * 10u64.pow(9);
         let amount = 100 * 10u64.pow(9);
-        let amount_b = LiquidityPool::calculate_swap(token_balance_a,9, token_balance_b,9, amount);
-        assert_eq!(amount_b, 909090909090, "Should swap large number of token B");
+        let fee_percentage = 0.003;
+        let amount_after_fee = amount as f64 * (1.0 - fee_percentage);
+        let expected_amount_b = (amount_after_fee * token_balance_b as f64 / (token_balance_a as f64 + amount_after_fee)) as u64;
+        let amount_b = LiquidityPool::calculate_swap(token_balance_a, 9, token_balance_b, 9, amount);
+        assert_eq!(amount_b, expected_amount_b, "Should swap large number of token B");
     }
 
     #[test]
@@ -848,8 +866,11 @@ mod tests {
         let token_balance_a = 1_000_000_000;
         let token_balance_b = 500_000_000;
         let amount = 100_000;
-        let amount_b = LiquidityPool::calculate_swap(token_balance_a,9, token_balance_b,9, amount);
-        assert_eq!(amount_b, 49995, "Should swap speicifc number of token B: 49995");
+        let fee_percentage = 0.003;
+        let amount_after_fee = amount as f64 * (1.0 - fee_percentage);
+        let expected_amount_b = (amount_after_fee * token_balance_b as f64 / (token_balance_a as f64 + amount_after_fee)) as u64;
+        let amount_b = LiquidityPool::calculate_swap(token_balance_a, 9, token_balance_b, 9, amount);
+        assert_eq!(amount_b, expected_amount_b, "Should swap speicifc number of token B: 49845");
     }
 
     #[test]
