@@ -17,6 +17,8 @@ import {setUpEnvironment} from "../utility/getUserAccount";
 describe("digital-nomad-exchange", () => {
     // Configure the client to use the local cluster.
     const provider = anchor.AnchorProvider.env();
+    const feePercentage = 3n; // Represent 0.3% as 3/1000
+    const feeDenominator = 1000n;
     anchor.setProvider(provider);
     const program = anchor.workspace.DigitalNomadExchange as Program<DigitalNomadExchange>;
     let user_account: anchor.web3.Keypair;
@@ -556,7 +558,9 @@ it("Can Add Liquidity", async () => {
 
         console.log(`Token B Balance: ${tokenBAccountInfo.amount}`);
 
-        const newBalanceA = BigInt(amount_to_send_a) + BigInt(amount_to_swap);
+        // Deduct Fee
+        const amountToSwapAfterFee = BigInt(amount_to_swap) * (feeDenominator - feePercentage) / feeDenominator;
+        const newBalanceA = BigInt(amount_to_send_a) + BigInt(amountToSwapAfterFee);
         const newBalanceB = (BigInt(amount_to_send_a) * BigInt(amount_to_send_b)) / newBalanceA;
         const intermediateSwapAmount = BigInt(amount_to_send_b) - newBalanceB; // Intermediate calculation
         console.log(`Intermediate Swap Amount: ${intermediateSwapAmount}`);
@@ -637,7 +641,9 @@ it("Can Add Liquidity", async () => {
 
         console.log(`Token A Balance: ${tokenAAccountInfo.amount}`);
 
-        const newBalanceB = BigInt(amount_to_send_b) + BigInt(amount_to_swap);
+        // Deduct Fee
+        const amountToSwapAfterFee = BigInt(amount_to_swap) * (feeDenominator - feePercentage) / feeDenominator;
+        const newBalanceB = BigInt(amount_to_send_b) + BigInt(amountToSwapAfterFee);
         const newBalanceA = (BigInt(amount_to_send_b) * BigInt(amount_to_send_a)) / newBalanceB;
         const intermediateSwapAmount = BigInt(amount_to_send_a) - newBalanceA;
 
