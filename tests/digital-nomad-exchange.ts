@@ -12,13 +12,13 @@ import {
 } from "@solana/spl-token";
 import { beforeEach } from "mocha";
 import * as assert from "node:assert";
+import {setUpEnvironment} from "../utility/getUserAccount";
 
 describe("digital-nomad-exchange", () => {
     // Configure the client to use the local cluster.
     const provider = anchor.AnchorProvider.env();
     anchor.setProvider(provider);
     const program = anchor.workspace.DigitalNomadExchange as Program<DigitalNomadExchange>;
-
     let user_account: anchor.web3.Keypair;
     let tokenA: anchor.web3.PublicKey;
     let tokenB: anchor.web3.PublicKey;
@@ -55,17 +55,6 @@ describe("digital-nomad-exchange", () => {
                 sortedTokenB: tokenA,
             };
         }
-    }
-
-    async function setUpEnvironment() {
-        console.log("Setting up environment");
-        user_account = anchor.web3.Keypair.generate();
-
-        const airdrop_tx = await provider.connection.requestAirdrop(user_account.publicKey, 1000000000);
-        await provider.connection.confirmTransaction({
-            signature: airdrop_tx,
-            ...(await provider.connection.getLatestBlockhash("finalized")),
-        });
     }
 
     async function createMints() {
@@ -203,8 +192,9 @@ describe("digital-nomad-exchange", () => {
     }
 
     beforeEach(async () => {
-        // Airdrop tokens
-        await setUpEnvironment();
+        // Set up user account and provider
+        const setup = await setUpEnvironment(provider);
+        user_account = setup.user_account;
         // Create mints
         await createMints();
 
