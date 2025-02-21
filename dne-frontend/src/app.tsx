@@ -1,10 +1,11 @@
 // src/App.tsx
-import { Router, Link, Route } from 'wouter';
+import { Router, Route } from 'wouter';
 import Portfolio from './pages/Portfolio';
 import Wallet from './pages/Wallet.tsx';
 import Pools from './pages/Pools';
 import Liquidity from "./pages/Liquidity.tsx";
 import Swap from "./pages/SwapScreen.tsx";
+import {BottomNavbar} from "./components/BottomActionBar.tsx";
 
 const App = () => (
     <div>
@@ -20,14 +21,6 @@ const App = () => (
     </div>
 );
 
-const BottomNavbar = () => (
-    <div className="navbar">
-        <Link to="/portfolio">Portfolio</Link>
-        <Link to="/wallet">Wallet</Link>
-        <Link to="/pools">Settings</Link>
-        <Link to="/liquidity">Liquidity</Link>
-        <Link to="/swap">Swap</Link>
-    </div>
-);
+
 
 export {App};
