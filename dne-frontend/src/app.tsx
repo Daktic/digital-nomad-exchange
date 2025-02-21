@@ -10,6 +10,7 @@ const App = () => (
     <div>
         <Router>
             <Route path="/" component={Portfolio} />
+            <Route path="/portfolio" component={Portfolio} />
             <Route path="/wallet" component={Wallet} />
             <Route path="/pools" component={Pools} />
             <Route path="/liquidity" component={Liquidity} />
@@ -21,10 +22,12 @@ const App = () => (
 
 const BottomNavbar = () => (
     <div className="navbar">
-        <Link to="/">Home</Link>
-        <Link to="/about">About</Link>
-        <Link to="/settings">Settings</Link>
+        <Link to="/portfolio">Portfolio</Link>
+        <Link to="/wallet">Wallet</Link>
+        <Link to="/pools">Settings</Link>
+        <Link to="/liquidity">Liquidity</Link>
+        <Link to="/swap">Swap</Link>
     </div>
 );
 
-export default App;
+export {App};
