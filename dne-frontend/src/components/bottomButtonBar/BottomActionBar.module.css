@@ -5,7 +5,8 @@
     width: 100%;
     display: flex;
     justify-content: space-around;
-    background-color: #f8f9fa;
+    align-items: center;
+    background-color: #000000;
     padding: 10px;
     box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
 }

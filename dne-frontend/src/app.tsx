@@ -5,7 +5,7 @@ import Wallet from './pages/Wallet.tsx';
 import Pools from './pages/Pools';
 import Liquidity from "./pages/Liquidity.tsx";
 import Swap from "./pages/SwapScreen.tsx";
-import {BottomNavbar} from "./components/BottomActionBar.tsx";
+import {BottomNavbar} from "./components/bottomButtonBar/BottomActionBar.tsx";
 
 const App = () => (
     <div>
