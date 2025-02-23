@@ -35,8 +35,8 @@ const AssetCard = ({asset}: AssetCardProps) => {
 }
 
 const AssetImg = ({symbol, img_uri}: AssetImgProps) => (
-    <div>
-        <img alt={symbol} src={img_uri}/>
+    <div className={styles.assetImgContainer}>
+        <img className={styles.assetImg} alt={symbol} src={img_uri}/>
     </div>
 )
 

@@ -6,3 +6,20 @@
     background: #747bff;
     border: 1px #f60000 solid;
 }
+
+.assetImgContainer {
+    display: inline-block;
+    position: relative;
+    width: 3em;
+    height: 3em;
+    background-size: cover;
+    border-radius: 50%;
+    overflow: hidden;
+}
+
+.assetImg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
