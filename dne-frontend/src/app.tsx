@@ -6,9 +6,10 @@ import Pools from './pages/Pools';
 import Liquidity from "./pages/Liquidity.tsx";
 import Swap from "./pages/SwapScreen.tsx";
 import {BottomNavbar} from "./components/bottomButtonBar/BottomActionBar.tsx";
+import styles from './app.module.css';
 
 const App = () => (
-    <div>
+    <div id={styles.App}>
         <Router>
             <Route path="/" component={Portfolio} />
             <Route path="/portfolio" component={Portfolio} />
