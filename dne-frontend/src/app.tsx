@@ -5,10 +5,12 @@ import Wallet from './pages/Wallet.tsx';
 import Pools from './pages/Pools';
 import Liquidity from "./pages/Liquidity.tsx";
 import Swap from "./pages/SwapScreen.tsx";
-import {BottomNavbar} from "./components/bottomButtonBar/BottomActionBar.tsx";
+import Layout from "./Layout.tsx";
+
+
 
 const App = () => (
-    <div>
+    <Layout >
         <Router>
             <Route path="/" component={Portfolio} />
             <Route path="/portfolio" component={Portfolio} />
@@ -17,8 +19,7 @@ const App = () => (
             <Route path="/liquidity" component={Liquidity} />
             <Route path="/swap" component={Swap} />
         </Router>
-        <BottomNavbar />
-    </div>
+    </Layout>
 );
 
 

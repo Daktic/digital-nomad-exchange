@@ -1,10 +1,9 @@
-
 export interface Asset {
-    symbol: string;
-    name: string;
-    token_img: string;
-    address: string;
-    price: number;
+    symbol: string,
+    name: string,
+    token_img: string,
+    address: string,
+    price: number,
 }
 
 export interface Wallet {
