@@ -5,6 +5,8 @@
     justify-content: space-around;
     background: #747bff;
     border: 1px #f60000 solid;
+    padding: 1em;
+    margin-top: 1em;
 }
 
 .assetImgContainer {

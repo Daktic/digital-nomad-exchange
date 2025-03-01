@@ -1,7 +1,8 @@
-import { h } from 'preact';
+
 import styles from './layout.module.css';
 import {BottomNavbar} from "./components/bottomButtonBar/BottomActionBar.tsx";
 
+// @ts-ignore
 const Layout = ({ children }) => {
     return (
         <div class={styles.container}>

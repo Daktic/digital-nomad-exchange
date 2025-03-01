@@ -4,14 +4,17 @@ import styles from "./Pages.module.css";
 import {mockWallet} from "../../../mock_data/mock_data.ts";
 
 
-const mock_asset = mockWallet.assets[0]
+const mock_assets = mockWallet.assets
 
 const Portfolio = () => {
 
     return (
         <div className={styles.page}>
             <h1>Portfolio</h1>
-            <AssetCard asset={mock_asset} />
+            {/*This will later return fetched assets*/}
+            {mock_assets.map((asset, index) => (
+                <AssetCard key={index} asset={asset} />
+            ))}
         </div>
     )
 }
