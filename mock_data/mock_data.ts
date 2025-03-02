@@ -61,25 +61,25 @@ const mockAssets: Asset[] = [
 
 export const mockPools: Pool[] = [
     {
-        symbol: "TEST",
+        symbol: "TEST-USDC",
         apy: 0.2,
         tokenA: mockAssets[0],
         tokenB: mockAssets[1],
     },
     {
-        symbol: "TEST",
+        symbol: "TEST-ETH",
         apy: 0.2,
         tokenA: mockAssets[2],
         tokenB: mockAssets[3],
     },
     {
-        symbol: "TEST",
+        symbol: "TEST-sTEST",
         apy: 0.2,
         tokenA: mockAssets[4],
         tokenB: mockAssets[5],
     },
     {
-        symbol: "TEST",
+        symbol: "TEST-USDT",
         apy: 0.2,
         tokenA: mockAssets[6],
         tokenB: mockAssets[7],
