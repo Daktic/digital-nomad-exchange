@@ -22,7 +22,10 @@ interface PoolAssetAPYProps {
 const PoolCard = ({pool}: poolCardProps) => {
     return (
         <div className={styles.card}>
-            <p>Test</p>
+            <TokenAImg symbol={pool.tokenA.symbol} img_uri={pool.tokenA.token_img}/>
+            <TokenBImg symbol={pool.tokenB.symbol} img_uri={pool.tokenB.token_img} />
+            <PoolName symbol={pool.symbol}/>
+            <PoolAPY apy={pool.apy}/>
         </div>
     )
 }
