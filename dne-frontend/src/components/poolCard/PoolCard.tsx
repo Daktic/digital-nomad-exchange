@@ -1,13 +1,13 @@
 import styles from "./PoolCard.module.css";
-import {Pool} from "../../types"
+import {Asset, Pool} from "../../types"
 
 // Prop Types
 interface poolCardProps {
     pool: Pool;
 }
 interface PoolAssetImgProps {
-    symbol: string;
-    img_uri: string;
+    tokenA: Asset;
+    tokenB: Asset;
 }
 
 interface PoolAssetSymbolProps {
@@ -22,24 +22,22 @@ interface PoolAssetAPYProps {
 const PoolCard = ({pool}: poolCardProps) => {
     return (
         <div className={styles.card}>
-            <TokenAImg symbol={pool.tokenA.symbol} img_uri={pool.tokenA.token_img}/>
-            <TokenBImg symbol={pool.tokenB.symbol} img_uri={pool.tokenB.token_img} />
+            <TokenImgs tokenA={pool.tokenA} tokenB={pool.tokenB}/>
             <PoolName symbol={pool.symbol}/>
             <PoolAPY apy={pool.apy}/>
         </div>
     )
 }
 
-const TokenAImg = ({symbol, img_uri}: PoolAssetImgProps) => (
-    <div className={styles.assetImgContainer}>
-        <img className={styles.assetImg} alt={symbol} src={img_uri}/>
-    </div>
-)
-
-const TokenBImg = ({symbol, img_uri}: PoolAssetImgProps) => (
-    <div className={styles.assetImgContainer}>
-        <img className={styles.assetImg} alt={symbol} src={img_uri}/>
-    </div>
+const TokenImgs = ({tokenA, tokenB}: PoolAssetImgProps) => (
+   <div className={styles.poolImageContainer}>
+        <div className={styles.assetImgContainer}>
+            <img className={styles.assetImg} alt={tokenA.name} src={tokenA.token_img}/>
+        </div>
+        <div>
+            <img className={styles.assetImg} alt={tokenA.name} src={tokenB.token_img}/>
+        </div>
+   </div>
 )
 
 const PoolName = ({symbol}: PoolAssetSymbolProps) => (
