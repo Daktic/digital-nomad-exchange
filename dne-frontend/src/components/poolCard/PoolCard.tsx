@@ -37,7 +37,7 @@ const TokenImgs = ({tokenA, tokenB}: PoolAssetImgProps) => (
         <div className={styles.assetImgContainer}>
             <img className={styles.assetImg} alt={tokenA.name} src={tokenA.token_img}/>
         </div>
-        <div>
+        <div className={styles.assetImgContainer}>
             <img className={styles.assetImg} alt={tokenA.name} src={tokenB.token_img}/>
         </div>
    </div>
