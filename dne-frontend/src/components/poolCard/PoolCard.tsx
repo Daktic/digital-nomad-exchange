@@ -1,13 +1,13 @@
 import styles from "./PoolCard.module.css";
-import {Pool} from "../../types"
+import {Asset, Pool} from "../../types"
 
 // Prop Types
 interface poolCardProps {
     pool: Pool;
 }
 interface PoolAssetImgProps {
-    symbol: string;
-    img_uri: string;
+    tokenA: Asset;
+    tokenB: Asset;
 }
 
 interface PoolAssetSymbolProps {
@@ -20,32 +20,36 @@ interface PoolAssetAPYProps {
 
 
 const PoolCard = ({pool}: poolCardProps) => {
+
     return (
-        <div className={styles.card}>
-            <p>Test</p>
-        </div>
-    )
+        <a href={`swap/${pool.symbol}`}>
+            <div className={styles.card}>
+                <TokenImgs tokenA={pool.tokenA} tokenB={pool.tokenB}/>
+                <PoolName symbol={pool.symbol}/>
+                <PoolAPY apy={pool.apy}/>
+            </div>
+        </a>
+)
 }
 
-const TokenAImg = ({symbol, img_uri}: PoolAssetImgProps) => (
-    <div className={styles.assetImgContainer}>
-        <img className={styles.assetImg} alt={symbol} src={img_uri}/>
-    </div>
+const TokenImgs = ({tokenA, tokenB}: PoolAssetImgProps) => (
+   <div className={styles.poolImageContainer}>
+        <div className={styles.assetImgContainer}>
+            <img className={styles.assetImg} alt={tokenA.name} src={tokenA.token_img}/>
+        </div>
+        <div>
+            <img className={styles.assetImg} alt={tokenA.name} src={tokenB.token_img}/>
+        </div>
+   </div>
 )
 
-const TokenBImg = ({symbol, img_uri}: PoolAssetImgProps) => (
-    <div className={styles.assetImgContainer}>
-        <img className={styles.assetImg} alt={symbol} src={img_uri}/>
-    </div>
-)
-
-const AssetName = ({symbol}: PoolAssetSymbolProps) => (
+const PoolName = ({symbol}: PoolAssetSymbolProps) => (
     <div>
         <p>{symbol}</p>
     </div>
 )
 
-const AssetPrice = ({apy}: PoolAssetAPYProps) => (
+const PoolAPY = ({apy}: PoolAssetAPYProps) => (
     <div>
         <p>{apy}</p>
     </div>

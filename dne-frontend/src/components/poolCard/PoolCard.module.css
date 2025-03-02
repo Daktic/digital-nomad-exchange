@@ -9,6 +9,11 @@
     margin-top: 1em;
 }
 
+.poolImageContainer {
+    display: flex;
+    flex-direction: row;
+}
+
 .assetImgContainer {
     display: inline-block;
     position: relative;

@@ -10,7 +10,7 @@ const Pools = () => {
             {/*This will later return fetched assets*/}
             {mockPools.map((pool, index) => (
             //     Pool Card
-                <PoolCard key={index} pool={pool}/>
+                <PoolCard key={index} pool={pool} />
             ))}
         </div>
     )
