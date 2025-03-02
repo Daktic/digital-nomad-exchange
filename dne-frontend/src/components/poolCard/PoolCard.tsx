@@ -39,13 +39,13 @@ const TokenBImg = ({symbol, img_uri}: PoolAssetImgProps) => (
     </div>
 )
 
-const AssetName = ({symbol}: PoolAssetSymbolProps) => (
+const PoolName = ({symbol}: PoolAssetSymbolProps) => (
     <div>
         <p>{symbol}</p>
     </div>
 )
 
-const AssetPrice = ({apy}: PoolAssetAPYProps) => (
+const PoolAPY = ({apy}: PoolAssetAPYProps) => (
     <div>
         <p>{apy}</p>
     </div>
