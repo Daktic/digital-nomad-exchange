@@ -1,6 +1,5 @@
 import styles from "./PoolCard.module.css";
 import {Asset, Pool} from "../../types"
-import {route} from "preact-router";
 
 // Prop Types
 interface poolCardProps {
@@ -23,7 +22,7 @@ interface PoolAssetAPYProps {
 const PoolCard = ({pool}: poolCardProps) => {
 
     return (
-        <a href={"swap"}>
+        <a href={`swap/${pool.symbol}`}>
             <div className={styles.card}>
                 <TokenImgs tokenA={pool.tokenA} tokenB={pool.tokenB}/>
                 <PoolName symbol={pool.symbol}/>
