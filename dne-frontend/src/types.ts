@@ -9,3 +9,10 @@ export interface Asset {
 export interface Wallet {
     assets: Asset[];
 }
+
+export interface Pool {
+    symbol: string,
+    apy: number,
+    tokenA: Asset,
+    tokenB: Asset,
+}
