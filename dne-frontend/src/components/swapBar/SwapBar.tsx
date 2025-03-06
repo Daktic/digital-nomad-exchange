@@ -102,41 +102,43 @@ const calulateAddRemove = (swap: calculateSwap): swapProduct => {
 const fee = 0.25;
 
 const SwapBar = ({ tokenA, tokenB }: SwapBarProps) => {
-    const [tokenAAmount, setTokenAAmount] = useState(1000);
-    const [tokenBAmount, setTokenBAmount] = useState(1000);
-    const [lpTokenAmount, setLPTokenAmount] = useState(Math.sqrt(1000 * 1000));
+    const [tokenAAmount, setTokenAAmount] = useState(0);
+    const [tokenBAmount, setTokenBAmount] = useState(0);
+    const [lpTokenAmount, setLPTokenAmount] = useState(0);
+
+    const [tokenAReserve, setTokenAReserve] = useState(1000);
+    const [tokenBReserve, setTokenBReserve] = useState(1000);
+    const [lpReserve, setReserve] = useState(Math.sqrt(1000 * 1000));
 
     useEffect(() => {
         // If Token A changes, update others
         const newState = calculateTokenAmounts({
-            tokenAAmount: tokenAAmount,
-            tokenBAmount: tokenBAmount,
+            tokenAAmount: tokenAReserve,
+            tokenBAmount: tokenBReserve,
             swapAmount: tokenAAmount,
             fee:fee,
-            lpAmount: lpTokenAmount,
+            lpAmount: lpReserve,
             swapType:swapType.AforB
         })
 
-        setTokenAAmount(newState.tokenAAmount);
         setTokenBAmount(newState.tokenBAmount);
         setLPTokenAmount(newState.lpAmount);
     }, [tokenAAmount]);
 
-    useEffect(() => {
-        // If Token A changes, update others
-        const newState = calculateTokenAmounts({
-            tokenAAmount: tokenAAmount,
-            tokenBAmount: tokenBAmount,
-            swapAmount: tokenBAmount,
-            fee:fee,
-            lpAmount: lpTokenAmount,
-            swapType:swapType.BforA
-        })
-
-        setTokenAAmount(newState.tokenAAmount);
-        setTokenBAmount(newState.tokenBAmount);
-        setLPTokenAmount(newState.lpAmount);
-    }, [tokenBAmount]);
+    // useEffect(() => {
+    //     // If Token A changes, update others
+    //     const newState = calculateTokenAmounts({
+    //         tokenAAmount: tokenAReserve,
+    //         tokenBAmount: tokenBReserve,
+    //         swapAmount: tokenBAmount,
+    //         fee:fee,
+    //         lpAmount: lpReserve,
+    //         swapType:swapType.BforA
+    //     })
+    //
+    //     setTokenAAmount(newState.tokenAAmount);
+    //     setLPTokenAmount(newState.lpAmount);
+    // }, [tokenBAmount]);
 
     return (
         <div className={styles.swapBarContainer}>
@@ -171,7 +173,7 @@ amount: number;
 update: (amount: number) => void
 }) => (
 <div className={styles.InputAmount}>
-    <input             type="number"
+    <input             type="text"
                        inputMode="decimal"
                        pattern="[0-9.]*"
                        value={amount}
