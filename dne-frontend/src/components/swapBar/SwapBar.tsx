@@ -143,8 +143,6 @@ const SwapBar = ({ tokenA, tokenB }: SwapBarProps) => {
     }
 
     return (
-        <div className={styles.swapBarContainer}>
-            <SwapAddSwitch></SwapAddSwitch>
             <div className={styles.swapBar}>
                 <TokenAmount
                     token={tokenA}
@@ -157,17 +155,10 @@ const SwapBar = ({ tokenA, tokenB }: SwapBarProps) => {
                     update={handleTokenBInput}
                 ></TokenAmount>
             </div>
-        </div>
     );
 };
 
 export default SwapBar;
-
-const SwapAddSwitch = () => (
-    <div className={styles.swapSwitch}>
-
-    </div>
-);
 
 
 const InputAmount = ({ amount, update }: {
@@ -202,3 +193,35 @@ const TokenAmount = ({ token, tokenAmount, update }: TokenAmountProps) => (
         ></InputAmount>
 </div>
 );
+
+interface SwitchProps {
+    checked: boolean;
+    setChecked: (checked: boolean) => void;
+}
+
+export const SwitchBar = ({checked, setChecked}: SwitchProps) => {
+    return (
+        <div className={styles.switchBar}>
+            <p>Swap</p>
+            <Switch checked={checked} setChecked={setChecked} />
+            <p>Supply</p>
+        </div>
+    )
+}
+
+const Switch = ({checked, setChecked}: SwitchProps) => {
+    const handleToggle = (): void => {
+        setChecked(!checked);
+    }
+    return (
+        <label className={styles.switch}>
+            <input
+                className={styles.switchInput}
+                type="checkbox"
+                checked={checked}
+                onChange={handleToggle}
+            />
+            <span className={styles.slider} />
+        </label>
+    )
+}

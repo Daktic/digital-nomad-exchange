@@ -12,6 +12,7 @@
     box-shadow: rgba(0, 0, 0, 0.1) 2px 2px 2px;
     justify-content: center;
     align-items: center;
+    margin: 0.5em auto;
 }
 
 .swapBarImgContainer {
@@ -68,7 +69,60 @@
     border-radius: 50%;
 }
 
-.swapSwitch {
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 8em;
+    height: 2em;
+}
+
+/* Hide the default checkbox element */
+.switchInput {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+/* The slider “track” */
+.slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+/* The “thumb” that moves */
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+/* When checkbox is checked, move the thumb and change the background */
+input:checked + .slider {
+    background-color: #2b2d30; /* or any color you like */
+}
+
+input:checked + .slider:before {
+    transform: translateX(5.85em);
+}
+
+.switchBar {
     display: flex;
-    min-height: 10em;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin: 2em 1em 6em 1em;
+    padding: 1em;
+
 }
