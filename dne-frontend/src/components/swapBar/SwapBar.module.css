@@ -4,25 +4,28 @@
     flex-direction: column;
 }
 
+
 .swapBar {
     display: flex;
     flex-direction: row;
-    background: #747bff;
+    background: black;
     height: 10em;
-    box-shadow: rgba(0, 0, 0, 0.1) 2px 2px 2px;
+    border-top: 2px solid #ffffff;
+    border-bottom: 2px solid #ffffff;
+
+    box-shadow: 0 0 2em rgba(128, 0, 128, 0.5);
     justify-content: center;
     align-items: center;
     margin: 0.5em auto;
 }
 
+/* Swap image container with white border and purple shadow */
 .swapBarImgContainer {
     display: flex;
-    border: #f60000 solid 1px;
 }
 
 .swapBarAmountContainer {
     display: flex;
-    border: #0039f6 solid 1px;
 }
 
 .InputAmount {
@@ -39,9 +42,8 @@
     padding: 8px;
     font-size: 14px;
     text-align: center;
-    border: 1px solid #ccc;
+    border: 1px solid rgba(128, 0, 128, 0.3);
     border-radius: 4px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .poolImageContainer {
@@ -60,6 +62,7 @@
     background-size: cover;
     overflow: hidden;
     padding: 2em;
+
 }
 
 .assetImg {
@@ -69,11 +72,15 @@
     border-radius: 50%;
 }
 
+/* Switch styling */
 .switch {
     position: relative;
     display: inline-block;
     width: 8em;
     height: 2em;
+    border: 2px solid #fff;
+    box-shadow: 0 0 5px rgba(128, 0, 128, 0.5);
+    border-radius: 34px; /* keep it round or change for a boxy style */
 }
 
 /* Hide the default checkbox element */
@@ -90,8 +97,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: #ccc;
-    transition: .4s;
+    transition: 0.4s;
     border-radius: 34px;
 }
 
@@ -104,13 +110,13 @@
     left: 4px;
     bottom: 4px;
     background-color: white;
-    transition: .4s;
+    transition: 0.4s;
     border-radius: 50%;
 }
 
 /* When checkbox is checked, move the thumb and change the background */
 input:checked + .slider {
-    background-color: #2b2d30; /* or any color you like */
+    background-color: rgba(128, 0, 128, 0.3);;
 }
 
 input:checked + .slider:before {
@@ -124,5 +130,6 @@ input:checked + .slider:before {
     align-items: center;
     margin: 2em 1em 6em 1em;
     padding: 1em;
-
+    border: 2px solid #000000;
+    box-shadow: 0 0 1em rgba(128, 0, 128, 0.3);
 }
