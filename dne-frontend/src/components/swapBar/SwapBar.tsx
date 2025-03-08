@@ -108,3 +108,22 @@ const Switch = ({checked, setChecked}: SwitchProps) => {
         </label>
     )
 }
+
+export const ButtonBar = ({supply}: { supply: boolean }) => (
+    <div className={styles.buttonBarContainer}>
+        {supply ? <SupplyButtons /> : <SwapButton />}
+    </div>
+)
+
+const SwapButton = () => (
+    <div>
+        <button className={styles.swapBarButton}>Swap</button>
+    </div>
+)
+
+const SupplyButtons = () => (
+    <div className={styles.swapBarButtonContainer}>
+        <button className={styles.swapBarButton}>Supply</button>
+        <button className={styles.swapBarButton}>Remove</button>
+    </div>
+)

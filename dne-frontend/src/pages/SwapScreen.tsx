@@ -1,5 +1,5 @@
 import styles from "./Pages.module.css";
-import SwapBar, {SwitchBar} from "../components/swapBar/SwapBar.tsx";
+import SwapBar, {ButtonBar, SwitchBar} from "../components/swapBar/SwapBar.tsx";
 import {mockPools} from "../../../mock_data/mock_data.ts";
 import {useState} from "preact/hooks";
 
@@ -9,7 +9,7 @@ const fee = 0.25;
 
 const Swap = () => {
 
-    const [swapOrAdd, setSwapOrAdd] = useState(false);
+    const [swapOrSupply, setSwapOrSupply] = useState(false);
 
     const [tokenAAmount, setTokenAAmount] = useState(0);
     const [tokenBAmount, setTokenBAmount] = useState(0);
@@ -53,7 +53,7 @@ const Swap = () => {
 
     return (
         <div className={styles.page}>
-            <SwitchBar checked={swapOrAdd} setChecked={setSwapOrAdd} />
+            <SwitchBar checked={swapOrSupply} setChecked={setSwapOrSupply} />
             <div className={styles.swapBarContainer}>
                 <SwapBar
                     tokenA={testPool.tokenA}
@@ -65,6 +65,9 @@ const Swap = () => {
                     handleTokenBInput={handleTokenBInput}
                 />
             </div>
+            <div className={styles.spacer}>
+            </div>
+            <ButtonBar supply={swapOrSupply}/>
         </div>
     )
 };

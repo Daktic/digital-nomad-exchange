@@ -136,3 +136,27 @@ input:checked + .slider:before {
     border: 2px solid #000000;
     box-shadow: 0 0 1em rgba(128, 0, 128, 0.3);
 }
+
+.buttonBarContainer {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    margin: 1em 0;
+}
+
+.swapBarButtonContainer {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-evenly;
+    min-width: 25em;
+}
+
+.swapBarButton {
+    padding: 1em;
+    margin: 0 1em;
+    min-width: 10em;
+    border: black solid 0.3em;
+    box-shadow: 0 0 2em rgba(128, 0, 128, 0.3);
+}
