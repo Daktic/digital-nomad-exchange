@@ -177,9 +177,10 @@ const calulateAddRemove = (supply: LiquiditySwap): swapProduct => {
 
     if (supply.swapType === 2) {
         // LP for AB
-        newTokenA = 0;
-        newTokenB = 0;
-        newLp = 0;
+        const lpFraction = supply.lpAmount / supply.lpTotalSupply;
+        newTokenA = supply.tokenAReserve * lpFraction;
+        newTokenB = supply.tokenBReserve * lpFraction;
+        newLp = supply.lpTotalSupply-supply.lpAmount;
     } else {
         // AB for LP
         const minTBD = Math.min(
