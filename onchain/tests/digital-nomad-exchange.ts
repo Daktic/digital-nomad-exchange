@@ -315,6 +315,82 @@ it("Can Add Liquidity", async () => {
 
     });
 
+    it("Can Add Liquidity Twice", async () => {
+        // Call the addLiquidity function on the program
+        // The user will supply a 1:1 ratio of both tokens, each with 9 decimals
+        // The anchor.BN is used to create a new Big Number instance
+        const amount_to_send = amount_to_mint / 2;
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send), new anchor.BN(amount_to_send))
+            .accounts({
+                liquidityPool: liquidityPoolPda,
+                mintA: tokenA,
+                userTokenA: userTokenAccountA.address,
+                mintB: tokenB,
+                userTokenB: userTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
+                lpToken: lpToken,
+                userLpTokenAccount: userAssociatedLPToken.address,
+                user: user_account.publicKey,
+            })
+            .signers([user_account])
+            .rpc();
+
+        // grab pre amounts for calulation
+        const lpTokenAAccountInfoBefore = await getAccount(provider.connection, lpTokenAccountA);
+        const lpTokenBAccountInfoBefore = await getAccount(provider.connection, lpTokenAccountB);
+
+        // Do it again
+        await program.methods.addLiquidity(new anchor.BN(amount_to_send), new anchor.BN(amount_to_send))
+            .accounts({
+                liquidityPool: liquidityPoolPda,
+                mintA: tokenA,
+                userTokenA: userTokenAccountA.address,
+                mintB: tokenB,
+                userTokenB: userTokenAccountB.address,
+                lpTokenA: lpTokenAccountA,
+                lpTokenB: lpTokenAccountB,
+                lpToken: lpToken,
+                userLpTokenAccount: userAssociatedLPToken.address,
+                user: user_account.publicKey,
+            })
+            .signers([user_account])
+            .rpc();
+
+
+        // Fetch the token account information
+        const tokenAAccountInfo = await getAccount(provider.connection, userTokenAccountA.address);
+        const tokenBAccountInfo = await getAccount(provider.connection, userTokenAccountB.address);
+        const lpTokenAAccountInfo = await getAccount(provider.connection, lpTokenAccountA);
+        const lpTokenBAccountInfo = await getAccount(provider.connection, lpTokenAccountB);
+        const userAssociatedLPTokenInfo = await getAccount(provider.connection, userAssociatedLPToken.address);
+
+        // Log anc check the balances
+        console.log(`Token A Balance: ${tokenAAccountInfo.amount}`);
+        assert.equal(tokenAAccountInfo.amount, 0, "Token A balance should be 0 after adding liquidity");
+        console.log(`Token B Balance: ${tokenBAccountInfo.amount}`);
+        assert.equal(tokenBAccountInfo.amount, 0, "Token B balance should be 0 after adding liquidity");
+        console.log(`LP Token A Balance: ${lpTokenAAccountInfo.amount}`);
+        assert.equal(lpTokenAAccountInfo.amount, amount_to_send * 2, "LP Token A balance is incorrect");
+        console.log(`LP Token A Balance: ${lpTokenBAccountInfo.amount}`);
+        assert.equal(lpTokenBAccountInfo.amount, amount_to_send * 2, "LP Token B balance is incorrect");
+        console.log(`User LP Token Balance: ${userAssociatedLPTokenInfo.amount}`);
+
+        const lpTotalSupplyB4 = Math.sqrt(amount_to_send * amount_to_send);
+        // because we are adding the same amount each time A added / A existing will = 1. same for B
+        const minDiff = Math.min(Number(BigInt(amount_to_send)/BigInt(lpTokenAAccountInfoBefore.amount)),Number(BigInt(amount_to_send)/BigInt(lpTokenBAccountInfoBefore.amount)))
+        const expected_lp_minted = lpTotalSupplyB4 * minDiff;
+
+        console.log(`LP Minted on Second insertion: ${expected_lp_minted}`);
+
+        const expected_lp_amount = lpTotalSupplyB4 + expected_lp_minted;
+
+        console.log(`Expected LP Amount: ${lpTokenAAccountInfo.amount}`);
+
+        assert.equal(userAssociatedLPTokenInfo.amount, expected_lp_amount, "LP Token balance is incorrect");
+
+    });
+
     it("can't add arbitrary tokens into liquidity pool", async () => {
 
 
