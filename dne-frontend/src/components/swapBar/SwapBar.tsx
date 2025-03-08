@@ -77,6 +77,16 @@ const TokenAmount = ({ token, tokenAmount, updateFunction }: TokenAmountProps) =
 </div>
 );
 
+export const LPTokenSection = ({ token, tokenAmount, updateFunction }: TokenAmountProps) => (
+    <div className={styles.lpTokenSection}>
+        <TokenAmount
+            token={token}
+            tokenAmount={tokenAmount}
+            updateFunction={updateFunction}
+        />
+    </div>
+)
+
 interface SwitchProps {
     checked: boolean;
     setChecked: (checked: boolean) => void;

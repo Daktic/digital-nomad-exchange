@@ -160,3 +160,15 @@ input:checked + .slider:before {
     border: black solid 0.3em;
     box-shadow: 0 0 2em rgba(128, 0, 128, 0.3);
 }
+
+
+.lpTokenSection {
+    display: flex;
+    min-height: 20vh;
+    align-items: center;
+    justify-content: center;
+}
+
+.lpTokenSection img {
+    box-shadow: 0 0 1.2em rgba(128, 0, 128, 0.7);
+}

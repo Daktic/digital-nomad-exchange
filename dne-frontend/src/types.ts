@@ -15,4 +15,5 @@ export interface Pool {
     apy: number,
     tokenA: Asset,
     tokenB: Asset,
+    lpToken: Asset,
 }

@@ -4,6 +4,5 @@
 
 
 .spacer {
-    padding: 10vh 0;
-    border: #f60000 solid 1px;
+    min-height: 20vh;
 }

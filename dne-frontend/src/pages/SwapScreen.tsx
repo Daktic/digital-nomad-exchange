@@ -1,5 +1,5 @@
 import styles from "./Pages.module.css";
-import SwapBar, {ButtonBar, SwitchBar} from "../components/swapBar/SwapBar.tsx";
+import SwapBar, {ButtonBar, LPTokenSection, SwitchBar, TokenAmount} from "../components/swapBar/SwapBar.tsx";
 import {mockPools} from "../../../mock_data/mock_data.ts";
 import {useState} from "preact/hooks";
 
@@ -51,6 +51,20 @@ const Swap = () => {
         setLPTokenAmount(newState.lpAmount);
     }
 
+    const handleLPTokenInput = (newAmount: number) => {
+        setLPTokenAmount(newAmount);
+        const newState = calculateTokenAmounts({
+            tokenAAmount: tokenAReserve,
+            tokenBAmount: tokenBReserve,
+            swapAmount: newAmount,
+            fee:fee,
+            lpAmount: lpReserve,
+            swapType:swapType.LPforAB
+        })
+        setTokenAAmount(newState.tokenAAmount);
+        setTokenBAmount(newState.lpAmount);
+    }
+
     return (
         <div className={styles.page}>
             <SwitchBar checked={swapOrSupply} setChecked={setSwapOrSupply} />
@@ -65,8 +79,16 @@ const Swap = () => {
                     handleTokenBInput={handleTokenBInput}
                 />
             </div>
-            <div className={styles.spacer}>
-            </div>
+            {
+                swapOrSupply ?
+                        (<LPTokenSection
+                            token={testPool.lpToken}
+                            tokenAmount={lpTokenAmount}
+                            updateFunction={handleLPTokenInput}
+                        />)
+                : (<div className={styles.spacer}></div>)
+
+            }
             <ButtonBar supply={swapOrSupply}/>
         </div>
     )
