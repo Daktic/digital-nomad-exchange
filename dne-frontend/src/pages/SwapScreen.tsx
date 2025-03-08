@@ -22,14 +22,29 @@ const Swap = () => {
     const handleTokenAInput = (newAmount: number) => {
         setTokenAAmount(newAmount);
         // If Token A changes, update others
-        const newState = calculateTokenAmounts({
-            tokenAAmount: tokenAReserve,
-            tokenBAmount: tokenBReserve,
-            swapAmount: newAmount,
-            fee:fee,
-            lpAmount: lpReserve,
-            swapType:swapType.AforB
-        })
+        let swap: AnySwap;
+        if (swapOrSupply) {
+            swap = {
+                tokenAAmount: tokenAReserve,
+                tokenBAmount: tokenBReserve,
+                lpAmount: lpReserve,
+                swapType:swapType.ABforLP,
+                tokenAReserve: tokenAReserve,
+                tokenBReserve: tokenBReserve,
+                lpTotalSupply: lpReserve
+            }
+
+        } else {
+            swap = {
+                tokenAAmount: tokenAReserve,
+                tokenBAmount: tokenBReserve,
+                swapAmount: newAmount,
+                fee: fee,
+                lpAmount: lpReserve,
+                swapType: swapType.AforB
+            }
+        }
+        const newState = calculateTokenAmounts(swap)
 
         setTokenBAmount(newState.tokenBAmount);
         setLPTokenAmount(newState.lpAmount);
@@ -37,15 +52,30 @@ const Swap = () => {
 
     const handleTokenBInput = (newAmount: number) => {
         setTokenBAmount(newAmount);
+        let swap: AnySwap;
+        if (swapOrSupply) {
+            swap = {
+                tokenAAmount: tokenAReserve,
+                tokenBAmount: tokenBReserve,
+                lpAmount: lpReserve,
+                swapType:swapType.ABforLP,
+                tokenAReserve: tokenAReserve,
+                tokenBReserve: tokenBReserve,
+                lpTotalSupply: lpReserve
+            }
+
+        } else {
+            swap = {
+                tokenAAmount: tokenAReserve,
+                tokenBAmount: tokenBReserve,
+                swapAmount: newAmount,
+                fee:fee,
+                lpAmount: lpReserve,
+                swapType:swapType.BforA
+            }
+        }
         // If Token A changes, update others
-        const newState = calculateTokenAmounts({
-            tokenAAmount: tokenAReserve,
-            tokenBAmount: tokenBReserve,
-            swapAmount: newAmount,
-            fee:fee,
-            lpAmount: lpReserve,
-            swapType:swapType.BforA
-        })
+        const newState = calculateTokenAmounts(swap)
 
         setTokenAAmount(newState.tokenAAmount);
         setLPTokenAmount(newState.lpAmount);
