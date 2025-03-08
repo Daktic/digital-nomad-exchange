@@ -1,5 +1,5 @@
 import styles from "./Pages.module.css";
-import SwapBar, {ButtonBar, LPTokenSection, SwitchBar, TokenAmount} from "../components/swapBar/SwapBar.tsx";
+import SwapBar, {ButtonBar, LPTokenSection, SwitchBar} from "../components/swapBar/SwapBar.tsx";
 import {mockPools} from "../../../mock_data/mock_data.ts";
 import {useState} from "preact/hooks";
 
@@ -95,13 +95,25 @@ const Swap = () => {
 };
 export default Swap;
 
-interface calculateSwap {
+
+interface BaseSwap {
+    swapType:swapType
     tokenAAmount: number;
     tokenBAmount: number;
+    lpAmount: number;
+}
+
+interface RegularSwap extends BaseSwap {
+    swapType: swapType.AforB | swapType.BforA
     swapAmount: number;
     fee:number;
-    lpAmount: number;
-    swapType:swapType
+}
+
+interface LiquiditySwap extends BaseSwap {
+    swapType: swapType.LPforAB | swapType.ABforLP
+    tokenAReserve: number;
+    tokenBReserve: number;
+    lpTotalSupply: number;
 }
 
 enum swapType {
@@ -117,7 +129,9 @@ interface swapProduct {
     lpAmount: number;
 }
 
-const calculateTokenAmounts = (swap: calculateSwap): swapProduct => {
+type AnySwap = RegularSwap | LiquiditySwap
+
+const calculateTokenAmounts = (swap: AnySwap): swapProduct  => {
     let newTokenA: number;
     let newTokenB: number;
     let newLp: number;
@@ -132,8 +146,10 @@ const calculateTokenAmounts = (swap: calculateSwap): swapProduct => {
         newTokenA = calulateSwap(swap.tokenBAmount, swap.tokenAAmount, swap.swapAmount, swap.fee);
         newTokenB =  swap.tokenBAmount - swap.swapAmount;
         newLp = swap.lpAmount;
-    } else {
+    } else if (swap.swapType === 2 || swap.swapType === 3) {
         return calulateAddRemove(swap)
+    } else {
+        throw new Error("Unrecognized swap type")
     }
 
     return {
@@ -152,21 +168,27 @@ const calulateSwap = (tokenA:number, tokenB:number, swapAmount:number, fee:numbe
         (tokenA + amountAfterFee);
 }
 
-const calulateAddRemove = (swap: calculateSwap): swapProduct => {
+const calulateAddRemove = (supply: LiquiditySwap): swapProduct => {
+    // We assume that the pools have been set up if they exist here. so we can skip accounting for initial deposit math.
+
     let newTokenA: number;
     let newTokenB: number;
     let newLp: number;
 
-    if (swap.swapType === 2) {
+    if (supply.swapType === 2) {
         // LP for AB
         newTokenA = 0;
         newTokenB = 0;
         newLp = 0;
     } else {
         // AB for LP
-        newTokenA = 0;
-        newTokenB = 0;
-        newLp = 0;
+        const minTBD = Math.min(
+            Number(BigInt(supply.tokenAAmount)/BigInt(supply.tokenAReserve)),
+            Number(BigInt(supply.tokenBAmount)/BigInt(supply.tokenBAmount))
+        )
+        newTokenA = supply.tokenAAmount + supply.tokenAReserve;
+        newTokenB = supply.tokenBAmount + supply.tokenBReserve;
+        newLp = supply.lpTotalSupply + minTBD;
     }
     return {
         tokenAAmount: newTokenA,
