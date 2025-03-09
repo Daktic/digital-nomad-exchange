@@ -8,6 +8,9 @@ dependencies:
   preact:
     specifier: ^10.25.4
     version: 10.26.2
+  preact-hooks:
+    specifier: 0.0.0-0.0.0
+    version: 0.0.0-0.0.0
   wouter:
     specifier: ^3.6.0
     version: 3.6.0(react@19.0.0)
@@ -952,6 +955,10 @@ packages:
       picocolors: 1.1.1
       source-map-js: 1.2.1
     dev: true
+
+  /preact-hooks@0.0.0-0.0.0:
+    resolution: {integrity: sha512-MhobJpvM90BlnQRrxDf10NiXRVP2Yk+LV9GEC9D4PmDTa5JYLjaPfpADeED4N+wuWkkPK+QoD3EuEzHgIS+q1A==}
+    dev: false
 
   /preact@10.26.2:
     resolution: {integrity: sha512-0gNmv4qpS9HaN3+40CLBAnKe0ZfyE4ZWo5xKlC1rVrr0ckkEvJvAQqKaHANdFKsGstoxrY4AItZ7kZSGVoVjgg==}
