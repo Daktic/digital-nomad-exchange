@@ -5,9 +5,15 @@ import {WalletConnectionOptions} from "../walletConnection/WalletConnectionOptio
 import {useWallet} from "../../WalletProvider.tsx";
 import {useState} from "preact/hooks";
 
+
+const truncateAddress = (address: string) => {
+        return address.slice(0, 5);
+}
+
 const BottomNavbar = () => {
 
         const [walletConnected, setWalletConnected] = useState(false);
+        const [walletAddress, setWalletAddress] = useState("");
 
         const {
                 detectWallets,
@@ -28,26 +34,40 @@ const BottomNavbar = () => {
         }
 
         // user picked a specific wallet from the list
-        function handleWalletClick(wallet: any) {
+        async function handleWalletClick(wallet: any) {
                 // connect to that wallet
-                connectSelectedWallet(wallet);
+                const accounts = await connectSelectedWallet(wallet);
                 // close the UI component
                 setShowWalletOptions(false);
+                // Get and show wallet Address in icon
+                if (accounts && accounts.length > 0) {
+                        setWalletConnected(true);
+                        const truncatedAddress= truncateAddress(accounts[0].address);
+                        setWalletAddress(truncatedAddress);
+                }
         }
 
         return (
         <div className={styles.navbar}>
-                <Link to="/portfolio" className={styles.item}>
-                        <PortfolioIcon/>
-                </Link>
-                <Link to="/swap" className={styles.item}>
-                        <SwapIcon/>
-                </Link>
-                <Link to="/pools" className={styles.item}>
-                        <SupplyIcon/>
-                </Link>
-                <WalletIconSymbol walletConnected={walletConnected} handleClick={handleOpenWalletOptions}/>
-                {
+                <div className={styles.item}>
+                        <Link to="/portfolio" >
+                                <PortfolioIcon/>
+                        </Link>
+                </div>
+                <div className={styles.item}>
+                        <Link to="/swap" className={styles.item}>
+                                <SwapIcon/>
+                        </Link>
+                </div>
+                <div className={styles.item}>
+                        <Link to="/pools" className={styles.item}>
+                                <SupplyIcon/>
+                        </Link>
+                </div>
+                <div className={styles.item}>
+                        <WalletIconSymbol walletConnected={walletConnected} handleClick={handleOpenWalletOptions} walletAddress={walletAddress}/>
+                </div>
+                        {
                         // Show wallet connection options if clicked
                     showWalletOptions && (
                         <WalletConnectionOptions
@@ -61,8 +81,8 @@ const BottomNavbar = () => {
 };
 
 interface WalletIconSybolProps  {
-        walletAddress?: String
-        walletConnected: Boolean
+        walletAddress?: string
+        walletConnected: boolean
         handleClick?: () => void;
 }
 
@@ -70,7 +90,7 @@ const WalletIconSymbol = ({walletAddress, walletConnected, handleClick}: WalletI
         const fillColor = walletConnected ? "rgba(128, 0, 128, 0.7)" : "white";
 
         return (
-            <div className={styles.walletIconContainer} onClick={handleClick}>
+            <div className={`${styles.item} ${styles.walletIconItem}`} onClick={handleClick}>
                     <WalletIcon fillColor={fillColor} />
                     <p>{walletAddress}</p>
             </div>

@@ -9,7 +9,7 @@ interface WalletContextValue {
     selectedWallet: any | null;
     accounts: any[];
     detectWallets: () => void;
-    connectSelectedWallet: (walletToConnect: any) => Promise<void>;
+    connectSelectedWallet: (walletToConnect: any) => Promise<any[]>;
 }
 
 const WalletContext = createContext<WalletContextValue | undefined>(undefined);
@@ -25,17 +25,21 @@ export function WalletProvider({ children }: { children: any }) {
         setWallets([...discovered]);
     }
 
-    async function connectSelectedWallet(walletToConnect: any) {
+    async function connectSelectedWallet(walletToConnect: any): Promise<any[]> {
         // Store the user’s chosen wallet
         setSelectedWallet(walletToConnect);
 
         // Then call its connect() method
         const connectFeature = walletToConnect.features?.['standard:connect'];
-        if (!connectFeature) return;
+        if (!connectFeature) {
+            return []; // return an empty array if no connect feature
+        }
 
         const { accounts } = await connectFeature.connect();
         setAccounts(accounts);
+        return accounts;
     }
+
 
     return (
         <WalletContext.Provider
