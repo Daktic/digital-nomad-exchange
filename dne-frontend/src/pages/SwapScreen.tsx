@@ -25,9 +25,9 @@ const Swap = () => {
         let swap: AnySwap;
         if (swapOrSupply) {
             swap = {
-                tokenAAmount: tokenAReserve,
-                tokenBAmount: tokenBReserve,
-                lpAmount: lpReserve,
+                tokenAAmount: tokenAAmount,
+                tokenBAmount: tokenBAmount,
+                lpAmount: lpTokenAmount,
                 swapType:swapType.ABforLP,
                 tokenAReserve: tokenAReserve,
                 tokenBReserve: tokenBReserve,
@@ -36,14 +36,16 @@ const Swap = () => {
 
         } else {
             swap = {
-                tokenAAmount: tokenAReserve,
-                tokenBAmount: tokenBReserve,
+                tokenAReserve: tokenAReserve,
+                tokenBReserve: tokenBReserve,
                 swapAmount: newAmount,
                 fee: fee,
-                lpAmount: lpReserve,
+                lpTotalSupply: lpReserve,
                 swapType: swapType.AforB
             }
         }
+
+        console.log("Swap", swap);
         const newState = calculateTokenAmounts(swap)
 
         setTokenBAmount(newState.tokenBAmount);
@@ -55,9 +57,9 @@ const Swap = () => {
         let swap: AnySwap;
         if (swapOrSupply) {
             swap = {
-                tokenAAmount: tokenAReserve,
-                tokenBAmount: tokenBReserve,
-                lpAmount: lpReserve,
+                tokenAAmount: tokenAAmount,
+                tokenBAmount: tokenBAmount,
+                lpAmount: lpTokenAmount,
                 swapType:swapType.ABforLP,
                 tokenAReserve: tokenAReserve,
                 tokenBReserve: tokenBReserve,
@@ -66,11 +68,11 @@ const Swap = () => {
 
         } else {
             swap = {
-                tokenAAmount: tokenAReserve,
-                tokenBAmount: tokenBReserve,
+                tokenAReserve: tokenAReserve,
+                tokenBReserve: tokenBReserve,
                 swapAmount: newAmount,
                 fee:fee,
-                lpAmount: lpReserve,
+                lpTotalSupply: lpReserve,
                 swapType:swapType.BforA
             }
         }
@@ -84,12 +86,13 @@ const Swap = () => {
     const handleLPTokenInput = (newAmount: number) => {
         setLPTokenAmount(newAmount);
         const newState = calculateTokenAmounts({
-            tokenAAmount: tokenAReserve,
-            tokenBAmount: tokenBReserve,
-            swapAmount: newAmount,
-            fee:fee,
-            lpAmount: lpReserve,
-            swapType:swapType.LPforAB
+            tokenAAmount: tokenAAmount,
+            tokenBAmount: tokenBAmount,
+            lpAmount: lpTokenAmount,
+            swapType:swapType.LPforAB,
+            tokenAReserve: tokenAReserve,
+            tokenBReserve: tokenBReserve,
+            lpTotalSupply: lpReserve
         })
         setTokenAAmount(newState.tokenAAmount);
         setTokenBAmount(newState.lpAmount);
@@ -128,9 +131,9 @@ export default Swap;
 
 interface BaseSwap {
     swapType:swapType
-    tokenAAmount: number;
-    tokenBAmount: number;
-    lpAmount: number;
+    tokenAReserve: number;
+    tokenBReserve: number;
+    lpTotalSupply: number;
 }
 
 interface RegularSwap extends BaseSwap {
@@ -141,9 +144,9 @@ interface RegularSwap extends BaseSwap {
 
 interface LiquiditySwap extends BaseSwap {
     swapType: swapType.LPforAB | swapType.ABforLP
-    tokenAReserve: number;
-    tokenBReserve: number;
-    lpTotalSupply: number;
+    tokenAAmount: number;
+    tokenBAmount: number;
+    lpAmount: number;
 }
 
 enum swapType {
@@ -169,13 +172,13 @@ const calculateTokenAmounts = (swap: AnySwap): swapProduct  => {
     console.log(swap)
 
     if (swap.swapType === 0) {
-        newTokenA = swap.tokenAAmount - swap.swapAmount;
-        newTokenB =  calulateSwap(swap.tokenAAmount, swap.tokenBAmount, swap.swapAmount, swap.fee);
-        newLp = swap.lpAmount;
+        newTokenA = swap.tokenAReserve - swap.swapAmount;
+        newTokenB =  calulateSwap(swap.tokenAReserve, swap.tokenBReserve, swap.swapAmount, swap.fee);
+        newLp = swap.lpTotalSupply;
     } else if (swap.swapType === 1) {
-        newTokenA = calulateSwap(swap.tokenBAmount, swap.tokenAAmount, swap.swapAmount, swap.fee);
-        newTokenB =  swap.tokenBAmount - swap.swapAmount;
-        newLp = swap.lpAmount;
+        newTokenA = calulateSwap(swap.tokenBReserve, swap.tokenAReserve, swap.swapAmount, swap.fee);
+        newTokenB =  swap.tokenBReserve - swap.swapAmount;
+        newLp = swap.lpTotalSupply;
     } else if (swap.swapType === 2 || swap.swapType === 3) {
         return calulateAddRemove(swap)
     } else {
@@ -214,11 +217,11 @@ const calulateAddRemove = (supply: LiquiditySwap): swapProduct => {
     } else {
         // AB for LP
         const minTBD = Math.min(
-            Number(BigInt(supply.tokenAAmount)/BigInt(supply.tokenAReserve)),
-            Number(BigInt(supply.tokenBAmount)/BigInt(supply.tokenBAmount))
+            Number(BigInt(supply.tokenAReserve)/BigInt(supply.tokenAReserve)),
+            Number(BigInt(supply.tokenBReserve)/BigInt(supply.tokenBReserve))
         )
-        newTokenA = supply.tokenAAmount + supply.tokenAReserve;
-        newTokenB = supply.tokenBAmount + supply.tokenBReserve;
+        newTokenA = supply.tokenAReserve + supply.tokenAReserve;
+        newTokenB = supply.tokenBReserve + supply.tokenBReserve;
         newLp = supply.lpTotalSupply + minTBD;
     }
     return {
