@@ -16,7 +16,7 @@ const Swap = () => {
     const [lpTokenAmount, setLPTokenAmount] = useState(0);
 
     const [tokenAReserve, setTokenAReserve] = useState(1000);
-    const [tokenBReserve, setTokenBReserve] = useState(100);
+    const [tokenBReserve, setTokenBReserve] = useState(1000);
     const [lpReserve, setReserve] = useState(Math.sqrt(1000 * 1000));
 
     const handleTokenAInput = (newAmount: number) => {
@@ -95,7 +95,7 @@ const Swap = () => {
             lpTotalSupply: lpReserve
         })
         setTokenAAmount(newState.tokenAAmount);
-        setTokenBAmount(newState.lpAmount);
+        setTokenBAmount(newState.tokenBAmount);
     }
 
     return (
