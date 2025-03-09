@@ -3,8 +3,8 @@
     flex-direction: row;
     align-items: center;
     justify-content: space-around;
-    background: #747bff;
-    border: 1px #f60000 solid;
+    background: #151515;
+    box-shadow: 0 0 0.8em rgba(128, 0, 128, 0.7);
     padding: 1em;
     margin-top: 1em;
 }
@@ -22,6 +22,7 @@
     background-size: cover;
     border-radius: 50%;
     overflow: hidden;
+    box-shadow: 0 0 1.2em #000000;
 }
 
 .assetImg {
