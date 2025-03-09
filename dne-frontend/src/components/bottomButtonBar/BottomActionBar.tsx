@@ -7,6 +7,8 @@ import {useState} from "preact/hooks";
 
 const BottomNavbar = () => {
 
+        const [walletConnected, setWalletConnected] = useState(false);
+
         const {
                 detectWallets,
                 connectSelectedWallet,
@@ -44,7 +46,7 @@ const BottomNavbar = () => {
                 <Link to="/pools" className={styles.item}>
                         <SupplyIcon/>
                 </Link>
-                <WalletIcon onClick={handleOpenWalletOptions}/>
+                <WalletIconSymbol walletConnected={walletConnected} handleClick={handleOpenWalletOptions}/>
                 {
                         // Show wallet connection options if clicked
                     showWalletOptions && (
@@ -57,5 +59,22 @@ const BottomNavbar = () => {
         </div>
         )
 };
+
+interface WalletIconSybolProps  {
+        walletAddress?: String
+        walletConnected: Boolean
+        handleClick?: () => void;
+}
+
+const WalletIconSymbol = ({walletAddress, walletConnected, handleClick}: WalletIconSybolProps )=> {
+        const fillColor = walletConnected ? "rgba(128, 0, 128, 0.7)" : "white";
+
+        return (
+            <div className={styles.walletIconContainer} onClick={handleClick}>
+                    <WalletIcon fillColor={fillColor} />
+                    <p>{walletAddress}</p>
+            </div>
+        )
+}
 
 export {BottomNavbar};

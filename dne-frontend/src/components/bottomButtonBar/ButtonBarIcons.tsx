@@ -43,7 +43,15 @@ const SwapIcon = (props: any): VNode => (
     </svg>
 )
 
-const WalletIcon = (props: any): VNode => (
+interface WalletIconProps {
+    fillColor?: string;
+    accentColor?: string;
+}
+const WalletIcon = ({
+                        fillColor = "#D9D9D9",
+                        accentColor = "#1F1E1E",
+                        ...props
+                    }: WalletIconProps): VNode => (
     <svg
         width="50"
         height="40"
@@ -52,8 +60,8 @@ const WalletIcon = (props: any): VNode => (
         xmlns="http://www.w3.org/2000/svg"
         {...props}
     >
-        <rect width="43.0233" height="40" fill="#D9D9D9"/>
-        <rect x="16.2791" y="15.7576" width="33.7209" height="8.48485" fill="#1F1E1E"/>
+        <rect width="43.0233" height="40" fill={fillColor}/>
+        <rect x="16.2791" y="15.7576" width="33.7209" height="8.48485" fill={accentColor}/>
     </svg>
 )
 
