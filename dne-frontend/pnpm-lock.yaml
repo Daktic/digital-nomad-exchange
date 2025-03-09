@@ -5,12 +5,12 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  '@wallet-standard/app':
+    specifier: ^1.1.0
+    version: 1.1.0
   preact:
     specifier: ^10.25.4
     version: 10.26.2
-  preact-hooks:
-    specifier: 0.0.0-0.0.0
-    version: 0.0.0-0.0.0
   wouter:
     specifier: ^3.6.0
     version: 3.6.0(react@19.0.0)
@@ -717,6 +717,18 @@ packages:
       - react
     dev: true
 
+  /@wallet-standard/app@1.1.0:
+    resolution: {integrity: sha512-3CijvrO9utx598kjr45hTbbeeykQrQfKmSnxeWOgU25TOEpvcipD/bYDQWIqUv1Oc6KK4YStokSMu/FBNecGUQ==}
+    engines: {node: '>=16'}
+    dependencies:
+      '@wallet-standard/base': 1.1.0
+    dev: false
+
+  /@wallet-standard/base@1.1.0:
+    resolution: {integrity: sha512-DJDQhjKmSNVLKWItoKThJS+CsJQjR9AOBOirBVT1F9YpRyC9oYHE+ZnSf8y8bxUphtKqdQMPVQ2mHohYdRvDVQ==}
+    engines: {node: '>=16'}
+    dev: false
+
   /babel-plugin-transform-hook-names@1.0.2(@babel/core@7.26.9):
     resolution: {integrity: sha512-5gafyjyyBTTdX/tQQ0hRgu4AhNHG/hqWi0ZZmg2xvs2FgRkJXzDNKBZCyoYqgFkovfDrgM8OoKg8karoUvWeCw==}
     peerDependencies:
@@ -955,10 +967,6 @@ packages:
       picocolors: 1.1.1
       source-map-js: 1.2.1
     dev: true
-
-  /preact-hooks@0.0.0-0.0.0:
-    resolution: {integrity: sha512-MhobJpvM90BlnQRrxDf10NiXRVP2Yk+LV9GEC9D4PmDTa5JYLjaPfpADeED4N+wuWkkPK+QoD3EuEzHgIS+q1A==}
-    dev: false
 
   /preact@10.26.2:
     resolution: {integrity: sha512-0gNmv4qpS9HaN3+40CLBAnKe0ZfyE4ZWo5xKlC1rVrr0ckkEvJvAQqKaHANdFKsGstoxrY4AItZ7kZSGVoVjgg==}
