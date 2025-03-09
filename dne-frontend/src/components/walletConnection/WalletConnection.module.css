@@ -1,0 +1,22 @@
+.walletConnectionContainer {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 18em;
+    height: 20em;
+    background-color: rgba(0, 0, 0, 0.99);
+    border: 0.6em solid #ccc;
+    box-shadow: 0 0 3.2em rgba(128, 0, 128, 0.7);
+    padding: 1rem;
+    z-index: 1000;
+}
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    bottom: 4em; /* Leaves the bottom 3em for the navbar */
+    background: rgba(0, 0, 0, 0.5); /* dark overlay */
+    z-index: 999; /* behind the modal */
+}
