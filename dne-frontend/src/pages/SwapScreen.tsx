@@ -16,7 +16,7 @@ const Swap = () => {
     const [lpTokenAmount, setLPTokenAmount] = useState(0);
 
     const [tokenAReserve, setTokenAReserve] = useState(1000);
-    const [tokenBReserve, setTokenBReserve] = useState(1000);
+    const [tokenBReserve, setTokenBReserve] = useState(500);
     const [lpReserve, setReserve] = useState(Math.sqrt(1000 * 1000));
 
     const handleTokenAInput = (newAmount: number) => {
@@ -25,7 +25,7 @@ const Swap = () => {
         let swap: AnySwap;
         if (swapOrSupply) {
             swap = {
-                tokenAAmount: tokenAAmount,
+                tokenAAmount: newAmount,
                 tokenBAmount: tokenBAmount,
                 lpAmount: lpTokenAmount,
                 swapType:swapType.ABforLP,
@@ -47,7 +47,7 @@ const Swap = () => {
 
         console.log("Swap", swap);
         const newState = calculateTokenAmounts(swap)
-
+        console.log("New State", newState);
         setTokenBAmount(newState.tokenBAmount);
         setLPTokenAmount(newState.lpAmount);
     }
@@ -58,9 +58,9 @@ const Swap = () => {
         if (swapOrSupply) {
             swap = {
                 tokenAAmount: tokenAAmount,
-                tokenBAmount: tokenBAmount,
+                tokenBAmount: newAmount,
                 lpAmount: lpTokenAmount,
-                swapType:swapType.ABforLP,
+                swapType:swapType.BAforLP,
                 tokenAReserve: tokenAReserve,
                 tokenBReserve: tokenBReserve,
                 lpTotalSupply: lpReserve
@@ -88,7 +88,7 @@ const Swap = () => {
         const newState = calculateTokenAmounts({
             tokenAAmount: tokenAAmount,
             tokenBAmount: tokenBAmount,
-            lpAmount: lpTokenAmount,
+            lpAmount: newAmount,
             swapType:swapType.LPforAB,
             tokenAReserve: tokenAReserve,
             tokenBReserve: tokenBReserve,
@@ -143,7 +143,7 @@ interface RegularSwap extends BaseSwap {
 }
 
 interface LiquiditySwap extends BaseSwap {
-    swapType: swapType.LPforAB | swapType.ABforLP
+    swapType: swapType.LPforAB | swapType.ABforLP | swapType.BAforLP
     tokenAAmount: number;
     tokenBAmount: number;
     lpAmount: number;
@@ -153,7 +153,8 @@ enum swapType {
     AforB=0,
     BforA=1,
     LPforAB=2,
-    ABforLP=3
+    ABforLP=3,
+    BAforLP=4
 }
 
 interface swapProduct {
@@ -179,7 +180,7 @@ const calculateTokenAmounts = (swap: AnySwap): swapProduct  => {
         newTokenA = calulateSwap(swap.tokenBReserve, swap.tokenAReserve, swap.swapAmount, swap.fee);
         newTokenB =  swap.tokenBReserve - swap.swapAmount;
         newLp = swap.lpTotalSupply;
-    } else if (swap.swapType === 2 || swap.swapType === 3) {
+    } else if (swap.swapType === 2 || swap.swapType === 3 || swap.swapType === 4) {
         return calulateAddRemove(swap)
     } else {
         throw new Error("Unrecognized swap type")
@@ -216,13 +217,17 @@ const calulateAddRemove = (supply: LiquiditySwap): swapProduct => {
         newLp = supply.lpTotalSupply-supply.lpAmount;
     } else {
         // AB for LP
-        const minTBD = Math.min(
-            Number(BigInt(supply.tokenAReserve)/BigInt(supply.tokenAReserve)),
-            Number(BigInt(supply.tokenBReserve)/BigInt(supply.tokenBReserve))
-        )
-        newTokenA = supply.tokenAReserve + supply.tokenAReserve;
-        newTokenB = supply.tokenBReserve + supply.tokenBReserve;
-        newLp = supply.lpTotalSupply + minTBD;
+        // Have A -> get B and LP
+        if (supply.swapType === 3) {
+            newTokenA = supply.tokenAAmount;
+            newTokenB = supply.tokenAAmount * (supply.tokenBReserve / supply.tokenAReserve);
+            newLp = supply.lpTotalSupply * (supply.tokenAAmount / supply.tokenAReserve);
+        // Have B -> get A and LP
+        } else {
+            newTokenA = supply.tokenBAmount * (supply.tokenAReserve / supply.tokenBReserve);
+            newTokenB = supply.tokenBAmount;
+            newLp = supply.lpTotalSupply * (supply.tokenBAmount / supply.tokenBReserve);
+        }
     }
     return {
         tokenAAmount: newTokenA,
