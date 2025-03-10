@@ -4,7 +4,7 @@ use anchor_spl::token::spl_token;
 use anchor_spl::token::spl_token::error::TokenError::InvalidMint;
 use fixed::types::I64F64;
 
-declare_id!("D4JCMSe8bh1GcuPyGjicJ4JbdcmWmAPLvcuDqgpVSWFB");
+declare_id!("HFMM2nW3ARsBFEKsQnx5mxrTThMKiMGkyETeJ5i2zgNx");
 
 #[program]
 pub mod digital_nomad_exchange {
