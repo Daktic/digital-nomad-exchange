@@ -17,11 +17,15 @@ import {
     MINT_SIZE,
     TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
+import {useState} from "react";
 
 export default function Portfolio() {
     // useWallet() => for checking 'connected', 'publicKey', etc.
     const { publicKey, connected, sendTransaction } = useWallet();
     const { connection } = useConnection();
+
+    const [tokenAMint, setTokenAMint] = useState("");
+    const [tokenBMint, setTokenBMint] = useState("");
 
     useEffect(() => {
         if (publicKey) {
@@ -62,6 +66,12 @@ export default function Portfolio() {
 
         const sig = await sendTransaction(transaction, connection, {signers: [mint]});
         console.log("MINT Created:", mint.publicKey.toBase58(), sig);
+
+        if (tokenAMint === "") {
+            setTokenAMint(mint.publicKey.toBase58())
+        } else if (tokenBMint === "") {
+            setTokenBMint(mint.publicKey.toBase58())
+        }
     };
 
     return (
@@ -73,6 +83,8 @@ export default function Portfolio() {
             <button onClick={createMint}>
                 Mint
             </button>
+            <p>Token A Mint: {tokenAMint || "Not Yet Minted"}</p>
+            <p>Token B Mint: {tokenBMint || "Not Yet Minted"}</p>
         </div>
     );
 }
