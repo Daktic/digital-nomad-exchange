@@ -9,7 +9,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 const truncateAddress = (address: string) => address.slice(0, 5);
 
 const BottomNavbar = () => {
-        const { publicKey,  disconnect, wallets } = useWallet();
+        const { publicKey, select, connect, disconnect, wallets } = useWallet();
         const [showWalletOptions, setShowWalletOptions] = useState(false);
         const [selectedWallet, setSelectedWallet] = useState(null);
 
@@ -24,7 +24,8 @@ const BottomNavbar = () => {
 
         async function handleWalletClick(wallet: any) {
                 try {
-                        await wallet.adapter.connect();
+                        select(wallet.adapter.name);
+                        await connect();
                         setSelectedWallet(wallet);
                         setShowWalletOptions(false);
                 } catch (error) {
