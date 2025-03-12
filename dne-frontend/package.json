@@ -9,11 +9,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@coral-xyz/anchor": "^0.30.0",
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.95.3",
     "@wallet-standard/app": "^1.1.0",
+    "buffer": "^6.0.3",
     "preact": "^10.25.4",
     "wouter": "^3.6.0"
   },
   "devDependencies": {
+    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
     "@preact/preset-vite": "^2.10.1",
     "@types/wouter": "^2.2.0",
     "typescript": "~5.7.2",

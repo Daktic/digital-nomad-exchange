@@ -4,6 +4,9 @@ import styles from "./Pages.module.css";
 import {mockWallet} from "../../../mock_data/mock_data.ts";
 import {useWallet} from "../WalletProvider.tsx";
 
+import {createLiquidityPool} from "../onchain.ts"
+import {PublicKey} from "@solana/web3.js";
+
 
 const mock_assets = mockWallet.assets
 
@@ -22,9 +25,7 @@ const Portfolio = () => {
                 fontSize: 15,
             }}>{address}</h3>
             {/*This will later return fetched assets*/}
-            {mock_assets.map((asset, index) => (
-                <AssetCard key={index} asset={asset} />
-            ))}
+            <button onClick={() => {createLiquidityPool(accounts[0])}} >Click Me</button>
         </div>
     )
 }
