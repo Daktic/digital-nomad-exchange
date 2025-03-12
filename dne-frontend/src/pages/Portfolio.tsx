@@ -1,18 +1,68 @@
-import styles from "./Pages.module.css";
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useEffect } from "react";
+import styles from "./Pages.module.css";
 
-const Portfolio = () => {
-    const { publicKey, connected } = useWallet();
+// Wallet Adapter React
+import {useWallet, useAnchorWallet, useConnection} from "@solana/wallet-adapter-react";
 
-    // Example: Log whenever the wallet changes
+// Anchor
+import { AnchorProvider } from "@coral-xyz/anchor";
+
+// Solana Web3
+import { Connection, Keypair, Transaction, SystemProgram, PublicKey } from "@solana/web3.js";
+
+// SPL Token
+import {
+    createInitializeMintInstruction,
+    getMinimumBalanceForRentExemptMint,
+    MINT_SIZE,
+    TOKEN_PROGRAM_ID
+} from "@solana/spl-token";
+
+export default function Portfolio() {
+    // useWallet() => for checking 'connected', 'publicKey', etc.
+    const { publicKey, connected, sendTransaction } = useWallet();
+    const { connection } = useConnection();
+
     useEffect(() => {
         if (publicKey) {
-            console.log("Wallet changed, new publicKey: ", publicKey.toBase58());
+            console.log("Wallet changed, new publicKey:", publicKey.toBase58());
         } else {
             console.log("Wallet disconnected");
         }
     }, [publicKey]);
+
+    const createMint = async (event: any) => {
+        event.preventDefault();
+        if (!connection || !publicKey) {
+            return;
+        }
+
+        const mint = Keypair.generate();
+
+        const lamports = await getMinimumBalanceForRentExemptMint(connection);
+
+        const transaction = new Transaction();
+
+        transaction.add(
+            SystemProgram.createAccount({
+                fromPubkey: publicKey,
+                newAccountPubkey: mint.publicKey,
+                space: MINT_SIZE,
+                lamports,
+                programId: TOKEN_PROGRAM_ID,
+            }),
+            createInitializeMintInstruction(
+                mint.publicKey,
+                0,
+                publicKey,
+                publicKey,
+                TOKEN_PROGRAM_ID
+            )
+        );
+
+        const sig = await sendTransaction(transaction, connection, {signers: [mint]});
+        console.log("MINT Created:", mint.publicKey.toBase58(), sig);
+    };
 
     return (
         <div className={styles.page}>
@@ -20,9 +70,9 @@ const Portfolio = () => {
             <p>Connected? {connected ? "Yes" : "No"}</p>
             <p>{publicKey ? publicKey.toBase58() : "No wallet connected"}</p>
 
-            <button onClick={() => console.log(publicKey)}>Check Key in Console</button>
+            <button onClick={createMint}>
+                Mint
+            </button>
         </div>
     );
-};
-
-export default Portfolio;
+}
