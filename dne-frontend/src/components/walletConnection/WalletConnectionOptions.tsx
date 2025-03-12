@@ -26,17 +26,17 @@ export function WalletConnectionOptions({ wallets, onSelect }: Props) {
             <div className={styles.walletConnectionContainer}>
                 <h4>Choose a wallet:</h4>
                 <ul>
-                    {walletArray.map((wallet) => (
-                        <li key={wallet.adapter?.name || wallet.adapter?.constructor.name}>
-                            <button
-                                onClick={() => onSelect(wallet)}
-                                disabled={wallet.readyState !== "Installed" && wallet.readyState !== "Loadable"}
-                                className={styles.walletButton}
-                            >
-                                {wallet.adapter?.name || "Unnamed Wallet"}
-                            </button>
-                        </li>
-                    ))}
+                    {walletArray.map((wallet) => {
+                        console.log("Wallet item:", wallet);
+                        console.log("Public adapter name:", wallet.adapter.name); // <-- Add this
+                        return (
+                            <li key={wallet.adapter?.name}>
+                                <button onClick={() => onSelect(wallet)}>
+                                    {wallet.adapter?.name || "Unnamed Wallet"}
+                                </button>
+                            </li>
+                        );
+                    })}
                 </ul>
             </div>
         </div>

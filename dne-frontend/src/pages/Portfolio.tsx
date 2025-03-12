@@ -19,7 +19,7 @@ const Portfolio = () => {
                 fontSize: 15,
             }}>{publicKey}</h3>
             {/*This will later return fetched assets*/}
-            <button onClick={() => {}} >Click Me</button>
+            <button onClick={() => {console.log(publicKey)}} >Click Me</button>
         </div>
     )
 }

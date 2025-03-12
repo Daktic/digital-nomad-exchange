@@ -9,8 +9,9 @@ import { useWallet } from "@solana/wallet-adapter-react";
 const truncateAddress = (address: string) => address.slice(0, 5);
 
 const BottomNavbar = () => {
-        const { publicKey, connect, disconnect, select, wallets } = useWallet();
+        const { publicKey,  disconnect, wallets } = useWallet();
         const [showWalletOptions, setShowWalletOptions] = useState(false);
+        const [selectedWallet, setSelectedWallet] = useState(null);
 
         function handleOpenWalletOptions() {
                 if (publicKey) {
@@ -23,8 +24,8 @@ const BottomNavbar = () => {
 
         async function handleWalletClick(wallet: any) {
                 try {
-                        select(wallet.adapter.name); // Select wallet first
-                        await connect(); // Then attempt to connect
+                        await wallet.adapter.connect();
+                        setSelectedWallet(wallet);
                         setShowWalletOptions(false);
                 } catch (error) {
                         console.error("Failed to connect wallet:", error);
@@ -50,7 +51,7 @@ const BottomNavbar = () => {
                     </div>
                     <div className={styles.item}>
                             <WalletIconSymbol
-                                publicKey={publicKey}
+                                wallet={selectedWallet}
                                 handleClick={handleOpenWalletOptions}
                             />
                     </div>
@@ -66,13 +67,13 @@ const BottomNavbar = () => {
 };
 
 interface WalletIconSymbolProps {
-        publicKey: any;
+        wallet: any;
         handleClick?: () => void;
 }
 
-const WalletIconSymbol = ({ publicKey, handleClick }: WalletIconSymbolProps) => {
-        const fillColor = publicKey ? "rgba(128, 0, 128, 0.7)" : "white";
-        const walletAddress = publicKey ? truncateAddress(publicKey.toBase58()) : "Connect";
+const WalletIconSymbol = ({ wallet, handleClick }: WalletIconSymbolProps) => {
+        const fillColor = wallet?.adapter.connected ? "rgba(128, 0, 128, 0.7)" : "white";
+        const walletAddress = wallet ? truncateAddress(wallet.adapter.publicKey.toBase58()) : "Connect";
 
         return (
             <div className={`${styles.item} ${styles.walletIconItem}`} onClick={handleClick}>
