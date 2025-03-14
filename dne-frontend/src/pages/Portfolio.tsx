@@ -18,24 +18,24 @@ import {
     TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
 
+import {useWallet} from "@solana/wallet-adapter-react";
+
 export default function Portfolio() {
 
-    const { connection } = useConnection();
-    const wallet = useAnchorWallet();
-    const provider = new AnchorProvider(connection, wallet, {
-        commitment: "confirmed",
-    });
-    setProvider(provider);
 
-    const program = new Program(idl as DigitalNomadExchange, provider);
 
 
     const [tokenAMint, setTokenAMint] = useState("");
     const [tokenBMint, setTokenBMint] = useState("");
 
+
+
     const createMint = async (event: any) => {
+
+        const { sendTransaction, publicKey } = useWallet();
+
         event.preventDefault();
-        if (!connection || !wallet?.publicKey) {
+        if (!connection || !publicKey) {
             return;
         }
 
@@ -47,7 +47,7 @@ export default function Portfolio() {
 
         transaction.add(
             SystemProgram.createAccount({
-                fromPubkey: wallet?.publicKey,
+                fromPubkey: publicKey,
                 newAccountPubkey: mint.publicKey,
                 space: MINT_SIZE,
                 lamports,
@@ -56,17 +56,17 @@ export default function Portfolio() {
             createInitializeMintInstruction(
                 mint.publicKey,
                 0,
-                wallet?.publicKey,
-                wallet?.publicKey,
+                publicKey,
+                publicKey,
                 TOKEN_PROGRAM_ID
             )
         );
 
         const latestBlockhash = await connection.getLatestBlockhash();
         transaction.recentBlockhash = latestBlockhash.blockhash;
-        transaction.feePayer = wallet.publicKey;
+        transaction.feePayer = publicKey;
 
-        const sig = await wallet.signTransaction(transaction);
+        const sig = await sendTransaction(transaction, connection, {signers: [mint]});
         console.log("MINT Created:", mint.publicKey.toBase58(), sig);
 
         if (tokenAMint === "") {
@@ -75,6 +75,15 @@ export default function Portfolio() {
             setTokenBMint(mint.publicKey.toBase58())
         }
     };
+
+    const { connection } = useConnection();
+    const wallet = useAnchorWallet();
+    const provider = new AnchorProvider(connection, wallet, {
+        commitment: "confirmed",
+    });
+    setProvider(provider);
+
+    const program = new Program(idl as DigitalNomadExchange, provider);
 
 
 
