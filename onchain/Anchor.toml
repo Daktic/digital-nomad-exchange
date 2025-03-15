@@ -5,7 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-digital_nomad_exchange = "HFMM2nW3ARsBFEKsQnx5mxrTThMKiMGkyETeJ5i2zgNx"
+digital_nomad_exchange = "EkZNT5WirgZyKxVbrPaRV6GM53AXTjiv6HmNt98wBjNM"
 
 [registry]
 url = "https://api.apr.dev"
@@ -16,3 +16,4 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 ./tests/**/*.ts"
+create_pool = "ts-node ./scripts/createNewPool.ts"
