@@ -4,7 +4,7 @@ use anchor_spl::token::spl_token;
 use anchor_spl::token::spl_token::error::TokenError::InvalidMint;
 use fixed::types::I64F64;
 
-declare_id!("HFMM2nW3ARsBFEKsQnx5mxrTThMKiMGkyETeJ5i2zgNx");
+declare_id!("EkZNT5WirgZyKxVbrPaRV6GM53AXTjiv6HmNt98wBjNM");
 
 #[program]
 pub mod digital_nomad_exchange {
@@ -880,5 +880,24 @@ mod tests {
         let bytes = address.to_bytes();
         println!("{:?}", bytes);
         assert_eq!(bytes, [179, 36, 109, 199, 29, 35, 224, 187, 140, 184, 103, 132, 24, 111, 50, 110, 230, 100, 210, 140, 213, 176, 129, 44, 188, 185, 6, 150, 120, 221, 184, 18], "Should print the bytes of the address");
+    }
+
+#[test]
+    fn test_liquidity_pool_size() {
+        // This returns the size of LiquidityPool in bytes.
+        let size = std::mem::size_of::<LiquidityPool>();
+        println!("LiquidityPool size: {}", size);
+
+        // If LiquidityPool struct is defined as:
+        // pub struct LiquidityPool {
+        //     pub token_a: Pubkey,
+        //     pub token_b: Pubkey,
+        //     pub lp_token_a: Pubkey,
+        //     pub lp_token_b: Pubkey,
+        //     pub lp_token: Pubkey,
+        //     pub owner: Pubkey,
+        // }
+        // then its size should be 6 * 32 = 192 bytes.
+        assert_eq!(size, 192);
     }
 }
