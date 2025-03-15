@@ -286,10 +286,10 @@ pub struct CreateLiquidityPool<'info> {
         seeds = [b"liquidity_pool", token_a_mint.key().as_ref(), token_b_mint.key().as_ref()],
         bump
     )]
-    pub liquidity_pool: Account<'info, LiquidityPool>,
-    pub token_a_mint: Account<'info, Mint>,
-    pub token_b_mint: Account<'info, Mint>,
-    pub lp_token: Account<'info, Mint>,
+    pub liquidity_pool: Box<Account<'info, LiquidityPool>>,
+    pub token_a_mint: Box<Account<'info, Mint>>,
+    pub token_b_mint: Box<Account<'info, Mint>>,
+    pub lp_token: Box<Account<'info, Mint>>,
     // Need to initialize the token accounts for the PDA
     // Create the pool's token-account for token A
     #[account(
@@ -300,7 +300,7 @@ pub struct CreateLiquidityPool<'info> {
         seeds = [b"pool_token_a", token_a_mint.key().as_ref()],
         bump
     )]
-    pub lp_token_a: Account<'info, TokenAccount>,
+    pub lp_token_a: Box<Account<'info, TokenAccount>>,
 
     // Create the pool's token-account for token B
     #[account(
@@ -311,7 +311,7 @@ pub struct CreateLiquidityPool<'info> {
         seeds = [b"pool_token_b", token_b_mint.key().as_ref()],
         bump
     )]
-    pub lp_token_b: Account<'info, TokenAccount>,
+    pub lp_token_b: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     pub user: Signer<'info>,
     #[account(address = spl_token::ID)]
