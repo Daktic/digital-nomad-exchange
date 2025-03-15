@@ -130,7 +130,7 @@ const main = async () => {
 
     // Initialize the liquidity pool on-chain with sorted values
     await program.methods.initialize()
-        .accounts({
+        .accountsStrict({
             liquidityPool: liquidityPoolPda,
             tokenAMint: tokenA,
             tokenBMint: tokenB,
@@ -141,7 +141,7 @@ const main = async () => {
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: anchor.web3.SystemProgram.programId,
             rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-        } as any)
+        })
         .signers([user_account])
         .rpc();
 }
