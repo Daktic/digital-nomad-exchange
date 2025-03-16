@@ -29,6 +29,10 @@ pub mod digital_nomad_exchange {
         Ok(())
     }
 
+    pub fn initialize_pda(ctx: Context<CreateLiquidityPoolPDA>) -> Result<()> {
+        Ok(())
+    }
+
     // The add_liquidity function will add liquidity to the pool.
     // It will transfer the token A and B from the user to the pool.
     // It will mint LP tokens to the user.
@@ -273,14 +277,32 @@ impl LiquidityPool {
     }
 }
 
+// Context for initializing the PDA
+#[derive(Accounts)]
+pub struct CreateLiquidityPoolPDA<'info> {
+    #[account(
+            init,
+            payer = user,
+            space = 8 + (6 * 32),
+            // This enforces that the tokens are provided in sorted order by the client
+            constraint = token_a_mint.key() < token_b_mint.key(),
+            seeds = [b"liquidity_pool", token_a_mint.key().as_ref(), token_b_mint.key().as_ref()],
+            bump
+        )]
+        pub liquidity_pool: Account<'info, LiquidityPool>,
+        pub token_a_mint: Box<Account<'info, Mint>>,
+        pub token_b_mint: Box<Account<'info, Mint>>,
+        #[account(mut)]
+        pub user: Signer<'info>,
+        pub system_program: Program<'info, System>,
+        pub rent: Sysvar<'info, Rent>,
+    }
+
 // The context for the initialize function.
 // It contains the liquidity pool account, the two token accounts, the LP token mint, the user account, the system program and the rent sysvar.
 #[derive(Accounts)]
 pub struct CreateLiquidityPool<'info> {
     #[account(
-        init,
-        payer = user,
-        space = 8 + (6 * 32),
         // This enforces that the tokens are provided in sorted order by the client
         constraint = token_a_mint.key() < token_b_mint.key(),
         seeds = [b"liquidity_pool", token_a_mint.key().as_ref(), token_b_mint.key().as_ref()],

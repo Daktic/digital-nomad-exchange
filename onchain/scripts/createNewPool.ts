@@ -128,6 +128,19 @@ const main = async () => {
 
     logVariables();
 
+    // Init the PDA
+    await program.methods.initializePda()
+        .accountsStrict({
+            liquidityPool: liquidityPoolPda,
+            tokenAMint: tokenA,
+            tokenBMint: tokenB,
+            user: user_account.publicKey,
+            systemProgram: anchor.web3.SystemProgram.programId,
+            rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        })
+        .signers([user_account])
+        .rpc();
+
     // Initialize the liquidity pool on-chain with sorted values
     await program.methods.initialize()
         .accountsStrict({
