@@ -1,197 +1,65 @@
-
 import styles from "./Pages.module.css";
-
-// Wallet Adapter React
-import {useAnchorWallet, useConnection, useWallet} from "@solana/wallet-adapter-react";
-
-// Anchor
-import {AnchorProvider, Program, setProvider} from "@coral-xyz/anchor";
-
+import { useAnchorWallet, useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { AnchorProvider, Program, setProvider } from "@coral-xyz/anchor";
 import idl from "../../../onchain/target/idl/digital_nomad_exchange.json";
-import type {DigitalNomadExchange} from "../../../onchain/target/types/digital_nomad_exchange";
-import {useState} from "preact/hooks";
-import {Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction} from "@solana/web3.js";
-import {
-    createInitializeMintInstruction,
-    getMinimumBalanceForRentExemptMint,
-    MINT_SIZE,
-    TOKEN_PROGRAM_ID
-} from "@solana/spl-token";
+import type { DigitalNomadExchange } from "../../../onchain/target/types/digital_nomad_exchange";
+import { PublicKey, Connection } from "@solana/web3.js";
+import { sha256 } from "js-sha256";
+import { useState, useEffect } from "react";
+import bs58 from "bs58";
 
-const derivePDA = (programId, seeds) => {
-    return PublicKey.findProgramAddressSync(seeds, programId);
+// Ensure this matches your IDL program address
+const programID = new PublicKey(idl.address);
+
+// Compute the LiquidityPool discriminator
+const discriminator = Buffer.from(sha256.digest("account:LiquidityPool")).slice(0, 8);
+console.log("LiquidityPool Discriminator:", discriminator);
+
+// Async function to get liquidity pool accounts
+async function getLiquidityPools(connection: Connection, programID: PublicKey) {
+    const accounts = await connection.getProgramAccounts(programID, {
+        filters: [
+            {
+                memcmp: {
+                    offset: 0,
+                    bytes: bs58.encode(discriminator),
+                },
+            },
+        ],
+    });
+    return accounts;
 }
 
 export default function Portfolio() {
-
     const { sendTransaction, publicKey } = useWallet();
     const { connection } = useConnection();
     const wallet = useAnchorWallet();
-    const provider = new AnchorProvider(connection, wallet, {
-        commitment: "confirmed",
-    });
+
+    const provider = new AnchorProvider(connection, wallet, { commitment: "confirmed" });
     setProvider(provider);
 
     const program = new Program(idl as DigitalNomadExchange, provider);
 
+    // We'll store the pool accounts as an array of objects
+    const [liquidityPools, setLiquidityPools] = useState<
+        { pubkey: string; data: Buffer }[]
+    >([]);
 
-    const [tokenAMint, setTokenAMint] = useState("");
-    const [tokenBMint, setTokenBMint] = useState("");
-    const [lpMint, setLpMint] = useState("");
-
-
-
-    const createMint = async (event: any) => {
-        event.preventDefault();
-        if (!connection || !publicKey) {
-            return;
+    useEffect(() => {
+        async function fetchPools() {
+            const pools = await getLiquidityPools(connection, programID);
+            console.log("Pools:", pools);
+            // Map each account to an object with its pubkey and raw data
+            const parsedPools = pools.map(({ pubkey, account }) => ({
+                pubkey: pubkey.toBase58(),
+                data: account.data,
+            }));
+            setLiquidityPools(parsedPools);
         }
-
-        const mint = Keypair.generate();
-
-        const lamports = await getMinimumBalanceForRentExemptMint(connection);
-
-        const transaction = new Transaction();
-
-        transaction.add(
-            SystemProgram.createAccount({
-                fromPubkey: publicKey,
-                newAccountPubkey: mint.publicKey,
-                space: MINT_SIZE,
-                lamports,
-                programId: TOKEN_PROGRAM_ID,
-            }),
-            createInitializeMintInstruction(
-                mint.publicKey,
-                0,
-                publicKey,
-                publicKey,
-                TOKEN_PROGRAM_ID
-            )
-        );
-
-        const latestBlockhash = await connection.getLatestBlockhash();
-        transaction.recentBlockhash = latestBlockhash.blockhash;
-        transaction.feePayer = publicKey;
-
-        const sig = await sendTransaction(transaction, connection, {signers: [mint]});
-        console.log("MINT Created:", mint.publicKey.toBase58(), sig);
-
-        if (tokenAMint === "") {
-            setTokenAMint(mint.publicKey.toBase58())
-        } else if (tokenBMint === "") {
-            setTokenBMint(mint.publicKey.toBase58())
+        if (connection && wallet) {
+            fetchPools();
         }
-    };
-
-    const createLPMint = async () => {
-        const [liquidityPoolPDA, bump] = PublicKey.findProgramAddressSync(
-            [Buffer.from("liquidity_pool"), new PublicKey(tokenAMint).toBuffer(), new PublicKey(tokenBMint).toBuffer()],
-            program.programId
-        );
-        // Create LP Token
-        const lpMint = Keypair.generate();
-        const lamports = await getMinimumBalanceForRentExemptMint(connection);
-
-        const transaction = new Transaction();
-
-        transaction.add(
-            SystemProgram.createAccount({
-                fromPubkey: publicKey,
-                newAccountPubkey: lpMint.publicKey,
-                space: MINT_SIZE,
-                lamports,
-                programId: TOKEN_PROGRAM_ID,
-            }),
-            createInitializeMintInstruction(
-                lpMint.publicKey,
-                0,
-                liquidityPoolPDA,
-                null,
-                TOKEN_PROGRAM_ID
-            )
-        );
-
-        const latestBlockhash = await connection.getLatestBlockhash();
-        transaction.recentBlockhash = latestBlockhash.blockhash;
-        transaction.feePayer = publicKey;
-
-        const sig = await sendTransaction(transaction, connection, {signers: [lpMint]});
-        setLpMint(lpMint.publicKey.toBase58());
-        console.log("LP MINT Created:", lpMint.publicKey, sig);
-    }
-
-    const handleCreatePool = async () => {
-
-        if (!connection || !publicKey) {
-            return;
-        }
-
-        function sortTokens(
-            tokenA: PublicKey,
-            tokenB: PublicKey
-        ): {
-            sortedTokenA: PublicKey;
-            sortedTokenB: PublicKey;
-        } {
-            if (tokenA.toBuffer().compare(tokenB.toBuffer()) < 0) {
-                return {
-                    sortedTokenA: tokenA,
-                    sortedTokenB: tokenB,
-                };
-            } else {
-                return {
-                    sortedTokenA: tokenB,
-                    sortedTokenB: tokenA,
-                };
-            }
-        }
-
-        const { sortedTokenA, sortedTokenB } = sortTokens(new PublicKey(tokenAMint), new PublicKey(tokenBMint));
-
-        const [liquidityPoolPDA, bump] = PublicKey.findProgramAddressSync(
-            [Buffer.from("liquidity_pool"), new PublicKey(sortedTokenA).toBuffer(), new PublicKey(sortedTokenB).toBuffer()],
-            program.programId
-        );
-
-        const [lpTokenA] = derivePDA(program.programId, [
-            Buffer.from('pool_token_a'),
-            new PublicKey(sortedTokenA).toBuffer(),
-        ]);
-
-        const [lpTokenB] = derivePDA(program.programId, [
-            Buffer.from('pool_token_b'),
-            new PublicKey(sortedTokenB).toBuffer(),
-        ]);
-
-        console.log("Token A Mint:", sortedTokenA);
-        console.log("Token B Mint:", sortedTokenB);
-        console.log("LP Mint:", lpMint);
-        console.log("Liquidity Pool PDA:", liquidityPoolPDA.toBase58());
-
-
-
-
-        await program.methods
-            .initialize()
-            .accounts({
-                liquidityPool: liquidityPoolPDA,
-                tokenAMint: new PublicKey(sortedTokenA),
-                tokenBMint: new PublicKey(sortedTokenB),
-                lpToken: new PublicKey(lpMint),
-                lpTokenA: new PublicKey(lpTokenA),
-                lpTokenB: new PublicKey(lpTokenB),
-                user: publicKey,
-                tokenProgram: TOKEN_PROGRAM_ID,
-                systemProgram: SystemProgram.programId,
-                rent: SYSVAR_RENT_PUBKEY,
-            })
-            .signers([])
-            .rpc();
-
-
-    }
-
+    }, [connection, wallet]);
 
     return (
         <div className={styles.page}>
@@ -199,38 +67,11 @@ export default function Portfolio() {
             <p>Connected? {wallet ? "Yes" : "No"}</p>
             <p>{wallet?.publicKey ? wallet?.publicKey.toBase58() : "No wallet connected"}</p>
 
-            {
-                !tokenAMint && (
-                <button onClick={createMint}>
-                    Mint
-                </button>
-                )
-            }
-            <p>Token A Mint: {tokenAMint || "Not Yet Minted"}</p>
-            {
-                !tokenBMint && (
-                    <button onClick={createMint}>
-                        Mint
-                    </button>
-                )
-            }
-            <p>Token B Mint: {tokenBMint || "Not Yet Minted"}</p>
-            {
-                tokenAMint && tokenBMint && !lpMint &&(
-                    <button onClick={createLPMint}>
-                        Create LP Mint
-                    </button>
-                )
-            }
-            <p>LP Mint: {lpMint || "Not Yet Minted"}</p>
-
-            {
-                tokenAMint && tokenBMint && lpMint && (
-                    <button onClick={handleCreatePool}>
-                        Create LP
-                    </button>
-                )
-            }
+            {liquidityPools.map((lp, index) => (
+                <div key={index}>
+                    <p>Pool: {lp.pubkey}</p>
+                </div>
+            ))}
         </div>
     );
 }
