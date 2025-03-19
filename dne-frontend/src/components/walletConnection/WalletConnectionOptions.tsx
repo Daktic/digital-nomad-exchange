@@ -27,8 +27,6 @@ export function WalletConnectionOptions({ wallets, onSelect }: Props) {
                 <h4>Choose a wallet:</h4>
                 <ul>
                     {walletArray.map((wallet) => {
-                        console.log("Wallet item:", wallet);
-                        console.log("Public adapter name:", wallet.adapter.name); // <-- Add this
                         return (
                             <li key={wallet.adapter?.name}>
                                 <button onClick={() => onSelect(wallet)}>

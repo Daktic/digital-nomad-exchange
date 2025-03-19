@@ -7,6 +7,7 @@ import { PublicKey, Connection } from "@solana/web3.js";
 import { sha256 } from "js-sha256";
 import { useState, useEffect } from "react";
 import bs58 from "bs58";
+import { Buffer } from "buffer";
 
 // Ensure this matches your IDL program address
 const programID = new PublicKey(idl.address);
@@ -30,6 +31,13 @@ async function getLiquidityPools(connection: Connection, programID: PublicKey) {
     return accounts;
 }
 
+type liquidtyPoolDisplay = {
+    pool: string;
+    tokenA: string;
+    tokenB: string;
+    lpToken: string;
+}
+
 export default function Portfolio() {
     const { sendTransaction, publicKey } = useWallet();
     const { connection } = useConnection();
@@ -42,7 +50,7 @@ export default function Portfolio() {
 
     // We'll store the pool accounts as an array of objects
     const [liquidityPools, setLiquidityPools] = useState<
-        { pubkey: string; data: Buffer }[]
+        liquidtyPoolDisplay[]
     >([]);
 
     useEffect(() => {
@@ -50,14 +58,24 @@ export default function Portfolio() {
             const pools = await getLiquidityPools(connection, programID);
             console.log("Pools:", pools);
             // Map each account to an object with its pubkey and raw data
-            const parsedPools = pools.map(({ pubkey, account }) => ({
-                pubkey: pubkey.toBase58(),
-                data: account.data,
-            }));
-            setLiquidityPools(parsedPools);
+            let poolMetaPromise = pools.map(async (pool) => {
+            const poolData = await program.account.liquidityPool.fetch(pool.pubkey);
+
+            return {
+                pool: pool.pubkey.toBase58(),
+                tokenA: poolData.tokenA.toBase58(),
+                tokenB: poolData.tokenB.toBase58(),
+                lpToken: poolData.lpToken.toBase58(),
+            };
+            });
+
+            const poolMeta: liquidtyPoolDisplay[] = await Promise.all(poolMetaPromise);
+
+            setLiquidityPools(poolMeta);
         }
         if (connection && wallet) {
             fetchPools();
+
         }
     }, [connection, wallet]);
 
@@ -69,7 +87,10 @@ export default function Portfolio() {
 
             {liquidityPools.map((lp, index) => (
                 <div key={index}>
-                    <p>Pool: {lp.pubkey}</p>
+                    <p>Pool {lp.pool}</p>
+                    <p>Token A: {lp.tokenA}</p>
+                    <p>Token B: {lp.tokenB}</p>
+                    <p>LP Token: {lp.lpToken}</p>
                 </div>
             ))}
         </div>
