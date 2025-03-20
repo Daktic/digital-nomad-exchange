@@ -35,8 +35,11 @@ type liquidtyPoolDisplay = {
     pool: string;
     tokenA: string;
     tokenB: string;
+    lpTokenA: string;
+    lpTokenB: string;
     lpToken: string;
-}
+    owner: string;
+};
 
 export default function Portfolio() {
     const { sendTransaction, publicKey } = useWallet();
@@ -57,25 +60,39 @@ export default function Portfolio() {
         async function fetchPools() {
             const pools = await getLiquidityPools(connection, programID);
             console.log("Pools:", pools);
+
             // Map each account to an object with its pubkey and raw data
             let poolMetaPromise = pools.map(async (pool) => {
-            const poolData = await program.account.liquidityPool.fetch(pool.pubkey);
+                const accountData = pool.account.data;
+                const tokenA = new PublicKey(accountData.slice(8, 40));
+                const tokenB = new PublicKey(accountData.slice(40, 72));
+                const lpTokenA = new PublicKey(accountData.slice(72, 104));
+                const lpTokenB = new PublicKey(accountData.slice(104, 136));
+                const lpToken = new PublicKey(accountData.slice(136, 168));
+                const owner = new PublicKey(accountData.slice(168, 200));
 
-            return {
-                pool: pool.pubkey.toBase58(),
-                tokenA: poolData.tokenA.toBase58(),
-                tokenB: poolData.tokenB.toBase58(),
-                lpToken: poolData.lpToken.toBase58(),
-            };
+                const poolMeta: liquidtyPoolDisplay = {
+                    pool: pool.pubkey.toBase58(),
+                    tokenA: tokenA.toBase58(),
+                    tokenB: tokenB.toBase58(),
+                    lpTokenA: lpTokenA.toBase58(),
+                    lpTokenB: lpTokenB.toBase58(),
+                    lpToken: lpToken.toBase58(),
+                    owner: owner.toBase58(),
+                };
+
+                console.log("Fetched Pool Data:", poolMeta);
+                return poolMeta;
             });
 
             const poolMeta: liquidtyPoolDisplay[] = await Promise.all(poolMetaPromise);
+            console.log("Pool Metadata:", poolMeta);
 
             setLiquidityPools(poolMeta);
         }
+
         if (connection && wallet) {
             fetchPools();
-
         }
     }, [connection, wallet]);
 
