@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Mint, MintTo, Token, TokenAccount, Transfer};
-use anchor_spl::token::spl_token;
+use anchor_spl::token_interface::spl_token_2022;
 use anchor_spl::token::spl_token::error::TokenError::InvalidMint;
 use fixed::types::I64F64;
 
@@ -340,7 +340,7 @@ pub struct CreateLiquidityPool<'info> {
     pub lp_token_b: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     pub user: Signer<'info>,
-    #[account(address = spl_token::ID)]
+    #[account(address = spl_token_2022::ID)]
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>
