@@ -4,7 +4,29 @@
 
 
 import * as anchor from "@coral-xyz/anchor";
-import {Account, createMint, getOrCreateAssociatedTokenAccount, TOKEN_PROGRAM_ID} from "@solana/spl-token";
+import {
+    Account, createInitializeMetadataPointerInstruction, createInitializeMintInstruction,
+    createMint, ExtensionType, getMintLen,
+    getOrCreateAssociatedTokenAccount,
+    LENGTH_SIZE, TOKEN_2022_PROGRAM_ID,
+    TOKEN_PROGRAM_ID,
+    TYPE_SIZE
+} from "@solana/spl-token";
+import {
+    createInitializeInstruction,
+    createUpdateFieldInstruction,
+    createRemoveKeyInstruction,
+    pack,
+    TokenMetadata,
+} from "@solana/spl-token-metadata";
+import {
+    Connection,
+    Keypair,
+    SystemProgram,
+    Transaction,
+    clusterApiUrl,
+    sendAndConfirmTransaction,
+} from "@solana/web3.js";
 import {DigitalNomadExchange} from "../target/types/digital_nomad_exchange";
 import {Program} from "@coral-xyz/anchor";
 import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
@@ -24,7 +46,6 @@ const main = async () => {
     let lpToken: anchor.web3.PublicKey;
     let liquidityPoolPda!: anchor.web3.PublicKey;
     let bump: number;
-    let userAssociatedLPToken: Account;
     let lpTokenAccountA!: anchor.web3.PublicKey;
     let lpTokenAccountB!: anchor.web3.PublicKey;
 
@@ -93,6 +114,94 @@ const main = async () => {
         lpTokenAccountB = lpTokenBPda;
     }
 
+    async function createMetaData(
+        mint: anchor.web3.PublicKey,
+        tokenName: string,
+        tokenSymbol: string,
+        tokenURI: string
+    ) {
+     const metaData :TokenMetadata = {
+         updateAuthority:user_account.publicKey,
+            mint,
+         name:tokenName,
+         symbol:tokenSymbol,
+         uri:tokenURI,
+         additionalMetadata:[]
+     }
+
+        const metadataExtension = TYPE_SIZE + LENGTH_SIZE;
+        // Size of metadata
+        const metadataLen = pack(metaData).length;
+        // Size of Mint Account with extension
+        const mintLen = getMintLen([ExtensionType.MetadataPointer]);
+
+        // Minimum lamports required for Mint Account
+        const lamports = await provider.connection.getMinimumBalanceForRentExemption(
+            mintLen + metadataExtension + metadataLen,
+        );
+
+        let transaction: Transaction;
+
+        // account to hold the meta-data
+        const metadataAccount = Keypair.generate();
+
+        const accountInfo = await provider.connection.getAccountInfo(metadataAccount.publicKey);
+        if (accountInfo !== null) {
+            console.log(`Metadata account ${metadataAccount.publicKey.toBase58()} already exists.`);
+            return;
+        }
+
+        // Instruction to invoke System Program to create new account
+        const createAccountInstruction = SystemProgram.createAccount({
+            fromPubkey: user_account.publicKey, // Account that will transfer lamports to created account
+            newAccountPubkey: metadataAccount.publicKey, // Address of the account to create
+            space: mintLen, // Amount of bytes to allocate to the created account
+            lamports, // Amount of lamports transferred to created account
+            programId: TOKEN_2022_PROGRAM_ID, // Program assigned as owner of created account
+        });
+
+        // Instruction to initialize the MetadataPointer Extension
+        const initializeMetadataPointerInstruction =
+            createInitializeMetadataPointerInstruction(
+                mint, // Mint Account address
+                user_account.publicKey, // Authority that can set the metadata address
+                metadataAccount.publicKey, // Account address that holds the metadata
+                TOKEN_2022_PROGRAM_ID,
+            );
+
+        // Instruction to initialize Metadata Account data
+        const initializeMetadataInstruction = createInitializeInstruction({
+            programId: TOKEN_2022_PROGRAM_ID, // Token Extension Program as Metadata Program
+            metadata: metadataAccount.publicKey, // Account address that holds the metadata
+            updateAuthority: user_account.publicKey, // Authority that can update the metadata
+            mint: mint, // Mint Account address
+            mintAuthority: user_account.publicKey, // Designated Mint Authority
+            name: metaData.name,
+            symbol: metaData.symbol,
+            uri: metaData.uri,
+        });
+
+        // Add instructions to new transaction
+        transaction = new Transaction().add(
+            createAccountInstruction,
+            initializeMetadataPointerInstruction,
+            initializeMetadataInstruction,
+        );
+
+// Send transaction
+        const transactionSignature = await sendAndConfirmTransaction(
+            provider.connection,
+            transaction,
+            [user_account, metadataAccount], // Signers
+        );
+
+        console.log(
+            "\nCreate Mint Account:",
+            `https://solana.fm/tx/${transactionSignature}?cluster=devnet-solana`,
+        );
+    }
+
+
     function logVariables() {
         console.log(`User Account: ${user_account.publicKey}`);
         console.log(`Program ID: ${program.programId}`);
@@ -127,6 +236,19 @@ const main = async () => {
     derivePDAAddresses();
 
     logVariables();
+
+    await createMetaData(
+        tokenA,
+        "USD Coin",
+        "USDC",
+        "",
+    );
+    await createMetaData(
+        tokenB,
+        "USD Tether",
+        "USDT",
+        "https://arweave.net/E5mBuyuHTqf25G1A1lrSQOBg3pj_4Qe5-ZWxPbOPzAA",
+    );
 
     // Init the PDA
     await program.methods.initializePda()
