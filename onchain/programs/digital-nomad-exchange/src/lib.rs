@@ -23,9 +23,12 @@ pub mod digital_nomad_exchange {
         liquidity_pool.token_b = token_b;
         liquidity_pool.lp_token_a = ctx.accounts.lp_token_a.key();
         liquidity_pool.lp_token_b = ctx.accounts.lp_token_b.key();
-
         liquidity_pool.lp_token = ctx.accounts.lp_token.key();
         liquidity_pool.owner = ctx.accounts.user.key();
+
+        msg!("Token A (MINT): {}", liquidity_pool.token_a);
+        msg!("Token B (MINT): {}", liquidity_pool.token_b);
+
         Ok(())
     }
 
@@ -306,6 +309,7 @@ pub struct CreateLiquidityPool<'info> {
         // This enforces that the tokens are provided in sorted order by the client
         constraint = token_a_mint.key() < token_b_mint.key(),
         seeds = [b"liquidity_pool", token_a_mint.key().as_ref(), token_b_mint.key().as_ref()],
+        mut,
         bump
     )]
     pub liquidity_pool: Box<Account<'info, LiquidityPool>>,
