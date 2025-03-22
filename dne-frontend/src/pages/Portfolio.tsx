@@ -8,6 +8,7 @@ import { sha256 } from "js-sha256";
 import { useState, useEffect } from "react";
 import bs58 from "bs58";
 import { Buffer } from "buffer";
+import {getTokenMetadata} from "@solana/spl-token";
 
 // Ensure this matches your IDL program address
 const programID = new PublicKey(idl.address);
@@ -59,7 +60,7 @@ export default function Portfolio() {
     useEffect(() => {
         async function fetchPools() {
             const pools = await getLiquidityPools(connection, programID);
-            console.log("Pools:", pools);
+
 
             // Map each account to an object with its pubkey and raw data
             let poolMetaPromise = pools.map(async (pool) => {
@@ -81,19 +82,40 @@ export default function Portfolio() {
                     owner: owner.toBase58(),
                 };
 
-                console.log("Fetched Pool Data:", poolMeta);
                 return poolMeta;
             });
 
             const poolMeta: liquidtyPoolDisplay[] = await Promise.all(poolMetaPromise);
-            console.log("Pool Metadata:", poolMeta);
-
             setLiquidityPools(poolMeta);
         }
 
         if (connection && wallet) {
             fetchPools();
         }
+    }, [connection, wallet]);
+
+
+    useEffect(() => {
+        const fetchTokenMetadata = async () => {
+            const mint = new PublicKey("38MMckM88bQkeiztsqmxdQJ9QPrzDL9h8j4MkgYcNhGv");
+            try {
+                const metadata = await getTokenMetadata(connection, mint);
+                console.log("Token Metadata:", metadata);
+
+                // Fetch the JSON metadata from the URI
+                const response = await fetch(metadata.uri);
+                const jsonMetadata = await response.json();
+                console.log("JSON Metadata:", jsonMetadata);
+
+                // Display the name and image
+                console.log("Name:", jsonMetadata.name);
+                console.log("Image URL:", jsonMetadata.image);
+            } catch (error) {
+                console.error("Error fetching token metadata:", error);
+            }
+        };
+
+        fetchTokenMetadata();
     }, [connection, wallet]);
 
     return (
