@@ -1,29 +1,24 @@
 import * as anchor from "@coral-xyz/anchor";
 import {
-    createMint as splCreateMint,
     TOKEN_PROGRAM_ID,
     getOrCreateAssociatedTokenAccount
 } from "@solana/spl-token";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import {
     mplTokenMetadata,
-    createMetadataAccountV3,
-    MPL_TOKEN_METADATA_PROGRAM_ID, createAndMint, TokenStandard
+    createV1,
+    TokenStandard
 } from "@metaplex-foundation/mpl-token-metadata";
 import { DigitalNomadExchange } from "../target/types/digital_nomad_exchange";
 import { Program } from "@coral-xyz/anchor";
 import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 import {
-    Keypair,
     PublicKey,
     SystemProgram,
-    Transaction,
-    sendAndConfirmTransaction
 } from "@solana/web3.js";
 import * as console from "node:console";
 import {createSignerFromKeypair, generateSigner, percentAmount, signerIdentity} from "@metaplex-foundation/umi";
-import * as path from "node:path";
-import * as fs from "node:fs";
+
 
 const main = async () => {
     const provider = anchor.AnchorProvider.env();
@@ -54,30 +49,26 @@ const main = async () => {
     }
 
     // Create a fungible token mint with MPL metadata.
-    async function createFungibleTokenWithMetadata(metadata:any) {
+    async function createFungibleTokenWithMetadata(metadata: any) {
         const umi = createUmi('https://api.devnet.solana.com');
         let keypair = umi.eddsa.createKeypairFromSecretKey(user_account.secretKey);
         const signer = createSignerFromKeypair(umi, keypair);
         const mint = generateSigner(umi);
         umi.use(signerIdentity(signer));
-        umi.use(mplTokenMetadata())
+        umi.use(mplTokenMetadata());
 
-        const tx = await createAndMint(umi, {
+        await createV1(umi, {
             mint,
-            authority: umi.identity,
+            authority: signer,
             name: metadata.name,
             symbol: metadata.symbol,
             uri: metadata.uri,
             sellerFeeBasisPoints: percentAmount(0),
-            decimals: 8,
-            amount: 1000000_00000000,
-            tokenOwner: keypair.publicKey,
             tokenStandard: TokenStandard.Fungible,
-        }).sendAndConfirm(umi)
+        }).sendAndConfirm(umi);
 
-        console.log(tx)
+        console.log(`Minted token with public key: ${mint.publicKey}`);
         return new PublicKey(mint.publicKey);
-
     }
 
     async function checkTokenMintInitialization(mint: PublicKey) {
