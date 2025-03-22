@@ -390,6 +390,7 @@ pub struct AddLiquidity<'info> {
     pub user_lp_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(mut, signer)]
     pub user: Signer<'info>,
+    #[account(address = spl_token_2022::ID)]
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
@@ -483,6 +484,7 @@ pub struct RemoveLiquidity<'info> {
     pub user_lp_token_account: InterfaceAccount<'info, TokenAccount>,
     #[account(mut, signer)]
     pub user: Signer<'info>,
+    #[account(address = spl_token_2022::ID)]
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
@@ -601,6 +603,7 @@ pub struct SwapTokens<'info> {
     pub lp_token: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut, signer)]
     pub user: Signer<'info>,
+    #[account(address = spl_token_2022::ID)]
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
