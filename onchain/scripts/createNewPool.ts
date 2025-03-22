@@ -1,14 +1,9 @@
 import * as anchor from "@coral-xyz/anchor";
 import {
-    TOKEN_PROGRAM_ID,
-    getOrCreateAssociatedTokenAccount
+    TOKEN_2022_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress
 } from "@solana/spl-token";
-import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
-import {
-    mplTokenMetadata,
-    createV1,
-    TokenStandard
-} from "@metaplex-foundation/mpl-token-metadata";
+import { makeTokenMint } from "@solana-developers/helpers"
 import { DigitalNomadExchange } from "../target/types/digital_nomad_exchange";
 import { Program } from "@coral-xyz/anchor";
 import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
@@ -17,7 +12,6 @@ import {
     SystemProgram,
 } from "@solana/web3.js";
 import * as console from "node:console";
-import {createSignerFromKeypair, generateSigner, percentAmount, signerIdentity} from "@metaplex-foundation/umi";
 
 
 const main = async () => {
@@ -50,25 +44,16 @@ const main = async () => {
 
     // Create a fungible token mint with MPL metadata.
     async function createFungibleTokenWithMetadata(metadata: any) {
-        const umi = createUmi('https://api.devnet.solana.com');
-        let keypair = umi.eddsa.createKeypairFromSecretKey(user_account.secretKey);
-        const signer = createSignerFromKeypair(umi, keypair);
-        const mint = generateSigner(umi);
-        umi.use(signerIdentity(signer));
-        umi.use(mplTokenMetadata());
+        const mintAddress = await makeTokenMint(
+            provider.connection,
+            user_account,
+            metadata.name,
+            metadata.symbol,
+            9,
+            metadata.uri,
+        );
 
-        await createV1(umi, {
-            mint,
-            authority: signer,
-            name: metadata.name,
-            symbol: metadata.symbol,
-            uri: metadata.uri,
-            sellerFeeBasisPoints: percentAmount(0),
-            tokenStandard: TokenStandard.Fungible,
-        }).sendAndConfirm(umi);
-
-        console.log(`Minted token with public key: ${mint.publicKey}`);
-        return new PublicKey(mint.publicKey);
+        return mintAddress;
     }
 
     async function checkTokenMintInitialization(mint: PublicKey) {
@@ -87,30 +72,29 @@ const main = async () => {
         console.log("Both tokens initialized");
 
         try {
-            userTokenAccountA = await getOrCreateAssociatedTokenAccount(
-                provider.connection,
-                user_account,
-                tokenA,
+            userTokenAccountA = new PublicKey(await getAssociatedTokenAddress(
                 user_account.publicKey,
+                tokenA,
                 false,
-                "finalized"
-            );
-            console.log(`User Token Account A: ${userTokenAccountA.address.toBase58()}`);
+                TOKEN_2022_PROGRAM_ID,
+                ASSOCIATED_TOKEN_PROGRAM_ID,
+            ));
+            console.log(`User Token Account A: ${userTokenAccountA}`);
         } catch (error) {
             console.error("Error creating associated token account for Token A:", error);
             throw error;
         }
 
         try {
-            userTokenAccountB = await getOrCreateAssociatedTokenAccount(
-                provider.connection,
-                user_account,
-                tokenB,
+            userTokenAccountB = new PublicKey(await getAssociatedTokenAddress(
                 user_account.publicKey,
+                tokenB,
                 false,
-                "finalized"
-            );
-            console.log(`User Token Account B: ${userTokenAccountB.address.toBase58()}`);
+                TOKEN_2022_PROGRAM_ID,
+                ASSOCIATED_TOKEN_PROGRAM_ID,
+            ));
+            console.log(`User Token Account B: ${userTokenAccountB}`);
+
         } catch (error) {
             console.error("Error creating associated token account for Token B:", error);
             throw error;
@@ -144,8 +128,8 @@ const main = async () => {
             `Program ID: ${program.programId.toBase58()}`,
             `Token A: ${tokenA.toBase58()}`,
             `Token B: ${tokenB.toBase58()}`,
-            `User Token Account A: ${userTokenAccountA.address.toBase58()}`,
-            `User Token Account B: ${userTokenAccountB.address.toBase58()}`,
+            `User Token Account A: ${userTokenAccountA.toBase58()}`,
+            `User Token Account B: ${userTokenAccountB.toBase58()}`,
             `LP Token Account A: ${lpTokenAccountA.toBase58()}`,
             `LP Token Account B: ${lpTokenAccountB.toBase58()}`,
             `LP Token (Mint): ${lpToken.toBase58()}`,
@@ -187,7 +171,7 @@ const main = async () => {
         symbol: "LPT",
         uri: "https://example.com/lp-metadata.json" // Replace with your LP metadata URI
     };
-    lpToken = await createFungibleTokenWithMetadata(lpTokenMetadata);
+    lpToken = new PublicKey(await createFungibleTokenWithMetadata(lpTokenMetadata));
 
     // Derive the liquidity pool PDA using the sorted mints.
     derivePDAAddresses();
@@ -217,7 +201,7 @@ const main = async () => {
             lpTokenA: lpTokenAccountA,
             lpTokenB: lpTokenAccountB,
             user: user_account.publicKey,
-            tokenProgram: TOKEN_PROGRAM_ID,
+            tokenProgram: TOKEN_2022_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         })
