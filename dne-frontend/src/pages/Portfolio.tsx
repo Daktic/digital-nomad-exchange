@@ -97,26 +97,22 @@ export default function Portfolio() {
 
     useEffect(() => {
         const fetchTokenMetadata = async () => {
-            const mint = new PublicKey("38MMckM88bQkeiztsqmxdQJ9QPrzDL9h8j4MkgYcNhGv");
             try {
-                const metadata = await getTokenMetadata(connection, mint);
-                console.log("Token Metadata:", metadata);
-
-                // Fetch the JSON metadata from the URI
-                const response = await fetch(metadata.uri);
-                const jsonMetadata = await response.json();
-                console.log("JSON Metadata:", jsonMetadata);
-
-                // Display the name and image
-                console.log("Name:", jsonMetadata.name);
-                console.log("Image URL:", jsonMetadata.image);
+                for (const lp of liquidityPools) {
+                    const mintA = new PublicKey(lp.tokenA);
+                    const metadataA = await getTokenMetadata(connection, mintA);
+                    console.log("Token A Metadata:", metadataA);
+                    const mintB = new PublicKey(lp.tokenB);
+                    const metadataB = await getTokenMetadata(connection, mintB);
+                    console.log("Token A Metadata:", metadataB);
+                }
             } catch (error) {
                 console.error("Error fetching token metadata:", error);
             }
         };
 
         fetchTokenMetadata();
-    }, [connection, wallet]);
+    }, [liquidityPools]);
 
     return (
         <div className={styles.page}>
