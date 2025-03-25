@@ -8,7 +8,7 @@ use anchor_spl::token_interface::{
 
 use fixed::types::I64F64;
 
-declare_id!("EkZNT5WirgZyKxVbrPaRV6GM53AXTjiv6HmNt98wBjNM");
+declare_id!("HFMM2nW3ARsBFEKsQnx5mxrTThMKiMGkyETeJ5i2zgNx");
 
 #[program]
 pub mod digital_nomad_exchange {
