@@ -19,7 +19,7 @@ const buildSolScanUrl = (address: string) => {
 }
 
 const buildSwapUrl = (address: string) => {
-    return `https://localhost:5173/swap?pool=${address}`;
+    return `http://localhost:5173/swap?pool=${address}`;
 }
 
 const PoolCard = ({pool}: poolCardProps) => {
@@ -41,7 +41,7 @@ const TokenImgs = ({tokenA, tokenB}: PoolAssetProps) => (
             <img className={styles.assetImg} alt={tokenA.name} src={tokenA.token_img}/>
         </div>
         <div className={styles.assetImgContainer}>
-            <img className={styles.assetImg} alt={tokenA.name} src={tokenB.token_img}/>
+            <img className={styles.assetImg} alt={tokenB.name} src={tokenB.token_img}/>
         </div>
    </div>
 )
@@ -57,7 +57,7 @@ const PoolName = ({tokenA, tokenB}: PoolAssetProps) => (
         <a href={buildSolScanUrl(tokenA.address)} target="_blank" rel="noopener noreferrer">
             <p>{tokenA.name}</p></a>
         <a href={buildSolScanUrl(tokenB.address)} target="_blank" rel="noopener noreferrer">
-            <p>{tokenA.name}</p></a>
+            <p>{tokenB.name}</p></a>
     </div>
 )
 

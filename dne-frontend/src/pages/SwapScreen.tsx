@@ -1,15 +1,44 @@
 import styles from "./Pages.module.css";
 import SwapBar, {ButtonBar, LPTokenSection, SwitchBar} from "../components/swapBar/SwapBar.tsx";
-import {mockPools} from "../../../mock_data/mock_data.ts";
-import {useState} from "preact/hooks";
-
-const testPool = mockPools[0]
+import {useEffect, useState} from "react";
+import {Connection, PublicKey} from "@solana/web3.js";
+import {sha256} from "js-sha256";
+import bs58 from "bs58";
+import {liquidtyPoolDisplay, Pool} from "../types.ts";
+import {AnchorProvider, Program, setProvider} from "@coral-xyz/anchor";
+import {useAnchorWallet, useConnection} from "@solana/wallet-adapter-react";
+import idl from "../../../onchain/target/idl/digital_nomad_exchange.json";
+import type {DigitalNomadExchange} from "../../../onchain/target/types/digital_nomad_exchange.ts";
+import {Buffer} from "buffer";
+import {getTokenMetadata} from "@solana/spl-token";
 
 const fee = 0.25;
 
 const Swap = () => {
+    const { connection } = useConnection();
+    const wallet = useAnchorWallet();
+    const provider = new AnchorProvider(connection, wallet, { commitment: "confirmed" });
+    setProvider(provider);
 
+    const program = new Program(idl as DigitalNomadExchange, provider);
+
+    // Get the current URL
+    const currentUrl = window.location.href;
+
+    // Create a URL object
+    const url = new URL(currentUrl);
+
+    // Use URLSearchParams to get the query parameters
+    const params = new URLSearchParams(url.search);
+
+    // Get the value of the 'pool' parameter
+    const poolAddressQueryParam = params.get('pool');
+
+
+    const [poolAddress, setPoolAddress] = useState(poolAddressQueryParam);
     const [swapOrSupply, setSwapOrSupply] = useState(false);
+
+    const [poolMataData, setPoolMetaData] = useState<Pool | null>(null);
 
     const [tokenAAmount, setTokenAAmount] = useState(0);
     const [tokenBAmount, setTokenBAmount] = useState(0);
@@ -98,27 +127,134 @@ const Swap = () => {
         setTokenBAmount(newState.tokenBAmount);
     }
 
+    async function getLiquidityPools(connection: Connection, programID: PublicKey) {
+        // Compute the LiquidityPool discriminator
+        const discriminator = Buffer.from(sha256.digest("account:LiquidityPool")).slice(0, 8);
+        const accounts = await connection.getProgramAccounts(programID, {
+            filters: [
+                {
+                    memcmp: {
+                        offset: 0,
+                        bytes: bs58.encode(discriminator),
+                    },
+                },
+            ],
+        });
+        return accounts;
+    }
+
+    async function fetchPoolData(connection: Connection, programID: PublicKey, poolAddress: string) {
+        let accounts = await getLiquidityPools(connection, programID)
+        accounts = accounts.filter((account) => account.pubkey.toBase58() === poolAddress);
+
+        if (accounts.length === 0) {
+            throw new Error("Pool not found");
+        }
+
+        const pool = accounts[0];
+        const accountData = pool.account.data;
+        const tokenA = new PublicKey(accountData.slice(8, 40));
+        const tokenB = new PublicKey(accountData.slice(40, 72));
+        const lpTokenA = new PublicKey(accountData.slice(72, 104));
+        const lpTokenB = new PublicKey(accountData.slice(104, 136));
+        const lpToken = new PublicKey(accountData.slice(136, 168));
+        const owner = new PublicKey(accountData.slice(168, 200));
+
+        const poolMeta: liquidtyPoolDisplay = {
+            pool: pool.pubkey.toBase58(),
+            tokenA: tokenA.toBase58(),
+            tokenB: tokenB.toBase58(),
+            lpTokenA: lpTokenA.toBase58(),
+            lpTokenB: lpTokenB.toBase58(),
+            lpToken: lpToken.toBase58(),
+            owner: owner.toBase58(),
+        };
+
+        return poolMeta;
+    }
+
+    useEffect(() => {
+        async function fetchSinglePool() {
+            console.log(poolAddress);
+            try {
+                return await fetchPoolData(provider.connection, program.programId, poolAddress);
+            } catch (error) {
+                console.error("Error fetching single pool data:", error);
+            }
+        }
+
+        const fetchTokenMetaData = async () => {
+            try {
+                const lp = await fetchSinglePool();
+                if (lp) {
+                    const mintA = new PublicKey(lp.tokenA);
+                    const metadataA = await getTokenMetadata(connection, mintA);
+                    console.log("Token A Metadata:", metadataA);
+                    const mintB = new PublicKey(lp.tokenB);
+                    const metadataB = await getTokenMetadata(connection, mintB);
+                    const lpMint = new PublicKey(lp.lpToken);
+                    const metadataLP = await getTokenMetadata(connection, lpMint);
+
+                    const poolData: Pool = {
+                        address: lp.pool,
+                        tokenA: {
+                            symbol: metadataA?.symbol,
+                            name: metadataA?.name,
+                            token_img: metadataA?.uri,
+                            address: lp.tokenA,
+                        },
+                        tokenB: {
+                            symbol: metadataB?.symbol,
+                            name: metadataB?.name,
+                            token_img: metadataB?.uri,
+                            address: lp.tokenB,
+                        },
+                        lpToken: {
+                            symbol: `${metadataA?.symbol}-${metadataB?.symbol}`,
+                            name: `${metadataA?.symbol}-${metadataB?.symbol} LP Token`,
+                            token_img: metadataLP?.uri,
+                            address: lp.lpToken,
+                        },
+                        symbol: `${metadataA?.symbol}-${metadataB?.symbol}`,
+                    };
+
+                    setPoolMetaData(poolData);
+                }
+            } catch (error) {
+                console.error("Error fetching token metadata:", error);
+            }
+        }
+        if (connection && wallet) {
+            fetchTokenMetaData();
+        }
+    }, [poolAddress]);
+
     return (
         <div className={styles.page}>
             <SwitchBar checked={swapOrSupply} setChecked={setSwapOrSupply} />
             <div className={styles.swapBarContainer}>
-                <SwapBar
-                    tokenA={testPool.tokenA}
-                    tokenB={testPool.tokenB}
-                    tokenAAmount={tokenAAmount}
-                    tokenBAmount={tokenBAmount}
-                    lpAmount={lpTokenAmount}
-                    handleTokenAInput={handleTokenAInput}
-                    handleTokenBInput={handleTokenBInput}
-                />
+                {poolMataData &&
+                    <SwapBar
+                        tokenA={poolMataData.tokenA}
+                        tokenB={poolMataData.tokenB}
+                        tokenAAmount={tokenAAmount}
+                        tokenBAmount={tokenBAmount}
+                        lpAmount={lpTokenAmount}
+                        handleTokenAInput={handleTokenAInput}
+                        handleTokenBInput={handleTokenBInput}
+                    />
+                }
+
             </div>
             {
-                swapOrSupply ?
-                        (<LPTokenSection
-                            token={testPool.lpToken}
-                            tokenAmount={lpTokenAmount}
-                            updateFunction={handleLPTokenInput}
-                        />)
+                poolMataData && swapOrSupply ?
+                        (
+                            <LPTokenSection
+                                token={poolMataData.lpToken}
+                                tokenAmount={lpTokenAmount}
+                                updateFunction={handleLPTokenInput}
+                            />
+                        )
                 : (<div className={styles.spacer}></div>)
 
             }
