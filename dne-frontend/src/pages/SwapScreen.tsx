@@ -187,9 +187,19 @@ const Swap = () => {
             try {
                 const lp = await fetchSinglePool();
                 if (lp) {
+                    const lpBalanceA = await provider.connection.getTokenAccountBalance(new PublicKey(lp.lpTokenA));
+                    const lpBalanceB = await provider.connection.getTokenAccountBalance(new PublicKey(lp.lpTokenB));
+                    const lpTotalSupply = await connection.getTokenSupply(new PublicKey(lp.lpToken));
+
+                    console.log(lpTotalSupply);
+
+                    setTokenAReserve(Number(lpBalanceA.value.amount));
+                    setTokenBReserve(Number(lpBalanceB.value.amount));
+                    setLPTokenAmount(Number(lpTotalSupply.value.amount));
+
+
                     const mintA = new PublicKey(lp.tokenA);
                     const metadataA = await getTokenMetadata(connection, mintA);
-                    console.log("Token A Metadata:", metadataA);
                     const mintB = new PublicKey(lp.tokenB);
                     const metadataB = await getTokenMetadata(connection, mintB);
                     const lpMint = new PublicKey(lp.lpToken);
@@ -227,7 +237,7 @@ const Swap = () => {
         if (connection && wallet) {
             fetchTokenMetaData();
         }
-    }, [poolAddress]);
+    }, [poolAddress, wallet, connection]);
 
     return (
         <div className={styles.page}>
