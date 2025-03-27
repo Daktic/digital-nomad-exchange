@@ -1,6 +1,12 @@
 import * as anchor from "@coral-xyz/anchor";
 import {Program} from "@coral-xyz/anchor";
-import {ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, mintTo, TOKEN_2022_PROGRAM_ID} from "@solana/spl-token";
+import {
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    createAssociatedTokenAccount,
+    getAssociatedTokenAddress,
+    mintTo,
+    TOKEN_2022_PROGRAM_ID
+} from "@solana/spl-token";
 import {makeTokenMint} from "@solana-developers/helpers"
 import {DigitalNomadExchange} from "../target/types/digital_nomad_exchange";
 import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
@@ -20,10 +26,10 @@ async function createFungibleTokenWithMetadata(provider: anchor.AnchorProvider, 
     );
 }
 
-async function checkTokenMintInitialization(provider: anchor.AnchorProvider, mint: PublicKey) {
-    const mintInfo = await provider.connection.getParsedAccountInfo(mint);
+async function checkAccountInitialization(provider: anchor.AnchorProvider, account: PublicKey) {
+    const mintInfo = await provider.connection.getParsedAccountInfo(account);
     if (!mintInfo.value) {
-        throw new Error(`Token mint ${mint.toBase58()} is not initialized`);
+        throw new Error(`Account ${account.toBase58()} is not initialized`);
     }
 }
 
@@ -44,8 +50,8 @@ function sortTokens(
 
 async function getAssociatedUserTokenAccounts(provider:anchor.AnchorProvider ,tokenA: PublicKey, tokenB: PublicKey, lpToken: PublicKey, user_account: anchor.web3.Keypair) {
     console.log("Creating associated token accounts");
-    await checkTokenMintInitialization(provider, tokenA);
-    await checkTokenMintInitialization(provider, tokenB);
+    await checkAccountInitialization(provider, tokenA);
+    await checkAccountInitialization(provider, tokenB);
     console.log("Both tokens initialized");
 
     let userTokenAccountA: PublicKey;
@@ -89,7 +95,7 @@ async function getAssociatedUserTokenAccounts(provider:anchor.AnchorProvider ,to
             TOKEN_2022_PROGRAM_ID,
             ASSOCIATED_TOKEN_PROGRAM_ID,
         ));
-        console.log(`User Token Account B: ${userTokenAccountB}`);
+        console.log(`User Token Account LP: ${userTokenAccountLP}`);
 
     } catch (error) {
         console.error("Error creating associated token account for Token B:", error);
@@ -262,27 +268,66 @@ const main = async () => {
     tokenA = sortedMints.sortedTokenA;
     tokenB = sortedMints.sortedTokenB;
 
-    // Initialize the pool
-    await initializePool(provider, tokenA, tokenB, lpToken, user_account);
+
 
     // Mint 1,000 of Token A and Token B to the user account.
-    const {userTokenAccountA, userTokenAccountB} = await getAssociatedUserTokenAccounts(provider, tokenA, tokenB, lpToken, user_account);
-    await mintTo(
-        provider.connection,
-        user_account,
-        tokenA,
-        userTokenAccountA,
-        user_account,
-        1000
-    );
-    await mintTo(
-        provider.connection,
-        user_account,
-        tokenB,
-        userTokenAccountB,
-        user_account,
-        1000
-    );
+    try {
+        // Create user Token accounts
+        let ta = await createAssociatedTokenAccount(
+            provider.connection,
+            user_account,
+            tokenA,
+            user_account.publicKey,
+            undefined,
+            TOKEN_2022_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+
+        console.log(`User Token Account A create return value ${new PublicKey(ta).toBase58()}`);
+
+        await createAssociatedTokenAccount(
+            provider.connection,
+            user_account,
+            tokenB,
+            user_account.publicKey,
+            undefined,
+            TOKEN_2022_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+
+        const {userTokenAccountA, userTokenAccountB} = await getAssociatedUserTokenAccounts(provider, tokenA, tokenB, lpToken, user_account);
+
+
+        // Mint tokens to user account
+        await mintTo(
+            provider.connection,
+            user_account,
+            tokenA,
+            userTokenAccountA,
+            user_account.publicKey,
+            1000,
+            [], // multiSigners (optional)
+            undefined, // confirmOptions (optional)
+            TOKEN_2022_PROGRAM_ID // programId
+        );
+        await mintTo(
+            provider.connection,
+            user_account,
+            tokenB,
+            userTokenAccountB,
+            user_account.publicKey,
+            1000,
+            [], // multiSigners (optional)
+            undefined, // confirmOptions (optional)
+            TOKEN_2022_PROGRAM_ID // programId
+        );
+    } catch (error) {
+        console.error("Error minting tokens to user account:", error);
+        throw error;
+    }
+
+    // Initialize the pool
+    await initializePool(provider, tokenA, tokenB, lpToken, user_account);
 
     // deposit into the pool
     await depositIntoPool(provider, tokenA, tokenB,lpToken, user_account);
