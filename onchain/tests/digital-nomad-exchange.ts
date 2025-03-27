@@ -2,17 +2,18 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { DigitalNomadExchange } from "../target/types/digital_nomad_exchange";
 import {
-    Account,
+    Account, ASSOCIATED_TOKEN_PROGRAM_ID,
     createInitializeAccountInstruction,
-    createMint,
     getAccount,
     getOrCreateAssociatedTokenAccount,
-    mintTo,
-    TOKEN_PROGRAM_ID,
+    mintTo, TOKEN_2022_PROGRAM_ID,
 } from "@solana/spl-token";
 import { beforeEach } from "mocha";
 import * as assert from "node:assert";
 import {setUpEnvironment} from "../utility/getUserAccount";
+import {PublicKey, SystemProgram} from "@solana/web3.js";
+import {makeTokenMint} from "@solana-developers/helpers"
+import * as console from "node:console";
 
 describe("digital-nomad-exchange", () => {
     // Configure the client to use the local cluster.
@@ -59,10 +60,15 @@ describe("digital-nomad-exchange", () => {
         }
     }
 
-    async function createMints() {
-        tokenA = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
-        tokenB = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
-        tokenC = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
+    async function createFungibleTokenWithMetadata(provider: anchor.AnchorProvider, metadata: any, signerAccount: anchor.web3.Keypair) {
+        return await makeTokenMint(
+            provider.connection,
+            signerAccount,
+            metadata.name,
+            metadata.symbol,
+            9,
+            metadata.uri,
+        );
     }
 
     async function createAssociatedTokenAccounts() {
@@ -71,20 +77,40 @@ describe("digital-nomad-exchange", () => {
             provider.connection,
             user_account,
             tokenA,
-            user_account.publicKey
+            user_account.publicKey,
+            true,
+            undefined,
+            undefined,
+            TOKEN_2022_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
         );
+        console.log(`User Token Account A: ${userTokenAccountA.address.toBase58()}`);
+
         userTokenAccountB = await getOrCreateAssociatedTokenAccount(
             provider.connection,
             user_account,
             tokenB,
-            user_account.publicKey
+            user_account.publicKey,
+            true,
+            undefined,
+            undefined,
+            TOKEN_2022_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
         );
+        console.log(`User Token Account B: ${userTokenAccountB.address.toBase58()}`);
+
         userTokenAccountC = await getOrCreateAssociatedTokenAccount(
             provider.connection,
             user_account,
             tokenC,
-            user_account.publicKey
+            user_account.publicKey,
+            true,
+            undefined,
+            undefined,
+            TOKEN_2022_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
         );
+        console.log(`User Token Account C: ${userTokenAccountC.address.toBase58()}`);
     }
 
     function derivePDAAddresses() {
@@ -117,24 +143,38 @@ describe("digital-nomad-exchange", () => {
             tokenA,
             userTokenAccountA.address,
             user_account.publicKey,
-            amountToMint
+            amountToMint,
+            [],
+            undefined,
+            TOKEN_2022_PROGRAM_ID
         );
+        console.log(`Minted ${amountToMint} of TOKEN A to user account`);
+
         await mintTo(
             provider.connection,
             user_account,
             tokenB,
             userTokenAccountB.address,
             user_account.publicKey,
-            amountToMint
+            amountToMint,
+            [],
+            undefined,
+            TOKEN_2022_PROGRAM_ID
         );
+        console.log(`Minted ${amountToMint} of TOKEN B to user account`);
+
         await mintTo(
             provider.connection,
             user_account,
             tokenC,
             userTokenAccountC.address,
             user_account.publicKey,
-            amountToMint
+            amountToMint,
+            [],
+            undefined,
+            TOKEN_2022_PROGRAM_ID
         );
+        console.log(`Minted ${amountToMint} of TOKEN C to user account`);
     }
 
     async function setUpFakeTokenCAccountForLP() {
@@ -158,7 +198,7 @@ describe("digital-nomad-exchange", () => {
             seed: "pool_token_c",
             space: ACCOUNT_SIZE,
             lamports: lamportsForRent,
-            programId: TOKEN_PROGRAM_ID,
+            programId: TOKEN_2022_PROGRAM_ID,
         });
 
         // Initialize the PDA account
@@ -166,7 +206,7 @@ describe("digital-nomad-exchange", () => {
             lpTokenCPda,
             tokenC,
             liquidityPoolPda,
-            TOKEN_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID
         );
 
         // Create and send the transaction
@@ -197,19 +237,47 @@ describe("digital-nomad-exchange", () => {
         // Set up user account and provider
         const setup = await setUpEnvironment(provider);
         user_account = setup.user_account;
+        console.log("Creating new Mints");
         // Create mints
-        await createMints();
+        const tokenAMetadata = {
+            name: "USD Coin",
+            symbol: "USDC",
+            uri: "https://etherscan.io/token/images/usdc_ofc_32.svg",
+        };
+        tokenA = await createFungibleTokenWithMetadata(provider, tokenAMetadata, user_account);
+
+        const tokenBMetadata = {
+            name: "Tether",
+            symbol: "USDT",
+            uri: "https://imgs.search.brave.com/3CpFLBfBLgar1MCKskrOhFvyEAweuZ6S41ikpGbNGdc/rs:fit:500:0:0:0/g:ce/aHR0cHM6Ly9zMy5j/b2ludGVsZWdyYXBo/LmNvbS9zdG9yYWdl/L3VwbG9hZHMvdmll/dy80NWFjODg2ZWNl/MTY0ZmZiYTcxMWU5/YzczYjU5ZDdiOC5w/bmc",
+        };
+        tokenB = await createFungibleTokenWithMetadata(provider, tokenBMetadata, user_account);
+
+        // Create LP token mint using the same helper (instead of an associated token account).
+        const lpTokenMetadata = {
+            name: "LP Token",
+            symbol: "LPT",
+            uri: "https://example.com/lp-metadata.json" // Replace with your LP metadata URI
+        };
+        lpToken = new PublicKey(await createFungibleTokenWithMetadata(provider, lpTokenMetadata, user_account));
+
+        // Create fake token for testing:
+        const tokenCMetadata = {
+            name: "Fake Token",
+            symbol: "FAKE",
+            uri: "https://example.com/fake-metadata.json"
+        };
+        tokenC = new PublicKey(await createFungibleTokenWithMetadata(provider, tokenCMetadata, user_account));
 
         // --- Sort mints so that tokenA is the lower (canonical) mint ---
         const sortedMints = sortTokens(tokenA, tokenB);
         tokenA = sortedMints.sortedTokenA;
         tokenB = sortedMints.sortedTokenB;
 
+        console.log("Tokens minted and sorted")
+
         // Create associated token accounts for the user using the sorted mints
         await createAssociatedTokenAccounts();
-
-        // Create LP token mint
-        lpToken = await createMint(provider.connection, user_account, user_account.publicKey, null, 9);
 
         // Create liquidity pool account keypair
         liquidityPool = anchor.web3.Keypair.generate();
@@ -217,9 +285,22 @@ describe("digital-nomad-exchange", () => {
         // Derive the liquidity pool PDA using the sorted mints
         derivePDAAddresses();
 
-        // Initialize the liquidity pool on-chain with sorted values
+        // Intialize the PDA account in first
+        await program.methods.initializePda()
+            .accountsStrict({
+                liquidityPool: liquidityPoolPda,
+                tokenAMint: tokenA,
+                tokenBMint: tokenB,
+                user: user_account.publicKey,
+                systemProgram: SystemProgram.programId,
+                rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+            })
+            .signers([user_account])
+            .rpc();
+
+        // Initialize the liquidity pool on-chain with sorted values.
         await program.methods.initialize()
-            .accounts({
+            .accountsStrict({
                 liquidityPool: liquidityPoolPda,
                 tokenAMint: tokenA,
                 tokenBMint: tokenB,
@@ -227,7 +308,8 @@ describe("digital-nomad-exchange", () => {
                 lpTokenA: lpTokenAccountA,
                 lpTokenB: lpTokenAccountB,
                 user: user_account.publicKey,
-                systemProgram: anchor.web3.SystemProgram.programId,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+                systemProgram: SystemProgram.programId,
                 rent: anchor.web3.SYSVAR_RENT_PUBKEY,
             })
             .signers([user_account])
@@ -242,7 +324,12 @@ describe("digital-nomad-exchange", () => {
             provider.connection,
             user_account,
             lpToken,
-            user_account.publicKey
+            user_account.publicKey,
+            true,
+            undefined,
+            undefined,
+            TOKEN_2022_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
         );
 
         // Create a fake token C account for testing

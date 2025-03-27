@@ -216,8 +216,8 @@ const depositIntoPool = async (provider: anchor.AnchorProvider, tokenA: anchor.w
         .accountsStrict({
             liquidityPool: liquidityPoolPda,
             mintA: tokenA,
-            mintB: tokenB,
             userTokenA: userTokenAccountA,
+            mintB: tokenB,
             userTokenB: userTokenAccountB,
             lpTokenA: lpTokenAPda,
             lpTokenB: lpTokenBPda,
