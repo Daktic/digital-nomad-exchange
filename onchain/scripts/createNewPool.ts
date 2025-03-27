@@ -60,8 +60,8 @@ async function getAssociatedUserTokenAccounts(provider:anchor.AnchorProvider ,to
 
     try {
         userTokenAccountA = new PublicKey(await getAssociatedTokenAddress(
-            user_account.publicKey,
             tokenA,
+            user_account.publicKey,
             false,
             TOKEN_2022_PROGRAM_ID,
             ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -74,8 +74,8 @@ async function getAssociatedUserTokenAccounts(provider:anchor.AnchorProvider ,to
 
     try {
         userTokenAccountB = new PublicKey(await getAssociatedTokenAddress(
-            user_account.publicKey,
             tokenB,
+            user_account.publicKey,
             false,
             TOKEN_2022_PROGRAM_ID,
             ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -89,8 +89,8 @@ async function getAssociatedUserTokenAccounts(provider:anchor.AnchorProvider ,to
 
     try {
         userTokenAccountLP = new PublicKey(await getAssociatedTokenAddress(
-            user_account.publicKey,
             lpToken,
+            user_account.publicKey,
             false,
             TOKEN_2022_PROGRAM_ID,
             ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -268,12 +268,10 @@ const main = async () => {
     tokenA = sortedMints.sortedTokenA;
     tokenB = sortedMints.sortedTokenB;
 
-
-
     // Mint 1,000 of Token A and Token B to the user account.
     try {
         // Create user Token accounts
-        let ta = await createAssociatedTokenAccount(
+        let created_token_account = await createAssociatedTokenAccount(
             provider.connection,
             user_account,
             tokenA,
@@ -283,7 +281,7 @@ const main = async () => {
             ASSOCIATED_TOKEN_PROGRAM_ID
         );
 
-        console.log(`User Token Account A create return value ${new PublicKey(ta).toBase58()}`);
+        console.log(`User Token Account A create return value ${new PublicKey(created_token_account).toBase58()}`);
 
         await createAssociatedTokenAccount(
             provider.connection,
@@ -294,6 +292,18 @@ const main = async () => {
             TOKEN_2022_PROGRAM_ID,
             ASSOCIATED_TOKEN_PROGRAM_ID
         );
+
+        await createAssociatedTokenAccount(
+            provider.connection,
+            user_account,
+            lpToken,
+            user_account.publicKey,
+            undefined,
+            TOKEN_2022_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+
+        console.log("Token Accounts created successfully");
 
         const {userTokenAccountA, userTokenAccountB} = await getAssociatedUserTokenAccounts(provider, tokenA, tokenB, lpToken, user_account);
 
@@ -326,11 +336,18 @@ const main = async () => {
         throw error;
     }
 
+    console.log("User Tokens minted successfully");
+
+
     // Initialize the pool
     await initializePool(provider, tokenA, tokenB, lpToken, user_account);
 
+    console.log("Pool initialized successfully");
+
     // deposit into the pool
     await depositIntoPool(provider, tokenA, tokenB,lpToken, user_account);
+
+    console.log("Deposited into pool successfully");
 
 }
 main().catch((err) => {
