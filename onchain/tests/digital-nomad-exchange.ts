@@ -362,7 +362,7 @@ it("Can Add Liquidity", async () => {
         // The anchor.BN is used to create a new Big Number instance
         const amount_to_send = amount_to_mint;
         await program.methods.addLiquidity(new anchor.BN(amount_to_send), new anchor.BN(amount_to_send))
-            .accounts({
+            .accountsStrict({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
@@ -373,6 +373,8 @@ it("Can Add Liquidity", async () => {
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+                systemProgram: SystemProgram.programId
             })
             .signers([user_account])
             .rpc();
@@ -408,7 +410,7 @@ it("Can Add Liquidity", async () => {
         // The anchor.BN is used to create a new Big Number instance
         const amount_to_send = amount_to_mint / 2;
         await program.methods.addLiquidity(new anchor.BN(amount_to_send), new anchor.BN(amount_to_send))
-            .accounts({
+            .accountsStrict({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
@@ -419,6 +421,8 @@ it("Can Add Liquidity", async () => {
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+                systemProgram: SystemProgram.programId
             })
             .signers([user_account])
             .rpc();
@@ -429,7 +433,7 @@ it("Can Add Liquidity", async () => {
 
         // Do it again
         await program.methods.addLiquidity(new anchor.BN(amount_to_send), new anchor.BN(amount_to_send))
-            .accounts({
+            .accountsStrict({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
@@ -440,6 +444,8 @@ it("Can Add Liquidity", async () => {
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+                systemProgram: SystemProgram.programId
             })
             .signers([user_account])
             .rpc();
@@ -485,7 +491,7 @@ it("Can Add Liquidity", async () => {
         const amount_to_send_b = 500_000_000;
         const amount_to_send_c = 87_654_321
         await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
-            .accounts({
+            .accountsStrict({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
@@ -496,6 +502,8 @@ it("Can Add Liquidity", async () => {
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+                systemProgram: SystemProgram.programId
             })
             .signers([user_account])
             .rpc();
@@ -504,7 +512,7 @@ it("Can Add Liquidity", async () => {
         let threwError = false;
         try {
             await program.methods.addLiquidity(new anchor.BN(amount_to_send_c), new anchor.BN(amount_to_send_c))
-                .accounts({
+                .accountsStrict({
                     liquidityPool: liquidityPoolPda,
                     mintA: tokenC,
                     userTokenA: userTokenAccountC.address,
@@ -515,6 +523,8 @@ it("Can Add Liquidity", async () => {
                     lpToken: lpToken,
                     userLpTokenAccount: userAssociatedLPToken.address,
                     user: user_account.publicKey,
+                    tokenProgram: TOKEN_2022_PROGRAM_ID,
+                    systemProgram: SystemProgram.programId
                 })
                 .signers([user_account])
                 .rpc();
@@ -548,7 +558,7 @@ it("Can Add Liquidity", async () => {
 
         // Call the addLiquidity function on the program with two different amounts
         await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
-            .accounts({
+            .accountsStrict({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
@@ -559,6 +569,8 @@ it("Can Add Liquidity", async () => {
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+                systemProgram: SystemProgram.programId
             })
             .signers([user_account])
             .rpc();
@@ -593,7 +605,7 @@ it("Can Add Liquidity", async () => {
 
         // Add some tokens to the liquidity pool
         await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
-            .accounts({
+            .accountsStrict({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
@@ -604,6 +616,8 @@ it("Can Add Liquidity", async () => {
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+                systemProgram: SystemProgram.programId
             })
             .signers([user_account])
             .rpc();
@@ -614,7 +628,7 @@ it("Can Add Liquidity", async () => {
         // remove 50% of the liquidity
         const amount_to_remove = Math.floor(Number(current_lp_balance.amount / BigInt(2)))
         await program.methods.removeLiquidity(new anchor.BN(amount_to_remove))
-            .accounts({
+            .accountsStrict({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
@@ -625,6 +639,8 @@ it("Can Add Liquidity", async () => {
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+            systemProgram: SystemProgram.programId
             })
             .signers([user_account])
             .rpc();
@@ -657,7 +673,7 @@ it("Can Add Liquidity", async () => {
 
         // Add some tokens to the liquidity pool
         await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
-            .accounts({
+            .accountsStrict({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
@@ -668,7 +684,7 @@ it("Can Add Liquidity", async () => {
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
-                tokenProgram: TOKEN_PROGRAM_ID,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
                 systemProgram: anchor.web3.SystemProgram.programId,
             })
             .signers([user_account])
@@ -688,7 +704,7 @@ it("Can Add Liquidity", async () => {
         try {
             await program.methods
                 .swapTokens(new anchor.BN(amount_to_swap), false)
-                .accounts({
+                .accountsStrict({
                     liquidityPool: liquidityPoolPda,
                     mintA: tokenA,
                     userTokenA: userTokenAccountA.address,
@@ -698,7 +714,7 @@ it("Can Add Liquidity", async () => {
                     lpTokenB: lpTokenAccountB,
                     lpToken: lpToken,
                     user: user_account.publicKey,
-                    tokenProgram: TOKEN_PROGRAM_ID,
+                    tokenProgram: TOKEN_2022_PROGRAM_ID,
                     systemProgram: anchor.web3.SystemProgram.programId,
                 })
                 .signers([user_account])
@@ -753,7 +769,7 @@ it("Can Add Liquidity", async () => {
 
         // Add some tokens to the liquidity pool
         await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
-            .accounts({
+            .accountsStrict({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
@@ -764,6 +780,8 @@ it("Can Add Liquidity", async () => {
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+                systemProgram: SystemProgram.programId
             })
             .signers([user_account])
             .rpc();
@@ -773,7 +791,7 @@ it("Can Add Liquidity", async () => {
             // Swap in reverse order
 
             await program.methods.swapTokens(new anchor.BN(amount_to_swap),true)
-                .accounts({
+                .accountsStrict({
                     liquidityPool: liquidityPoolPda,
                     // This will be flipped so that token B is swapped for token A
                     mintA: tokenA,
@@ -784,6 +802,8 @@ it("Can Add Liquidity", async () => {
                     lpTokenB: lpTokenAccountB,
                     lpToken: lpToken,
                     user: user_account.publicKey,
+                    tokenProgram: TOKEN_2022_PROGRAM_ID,
+                    systemProgram: SystemProgram.programId
                 })
                 .signers([user_account])
                 .rpc();
@@ -838,7 +858,7 @@ it("Can Add Liquidity", async () => {
 
         // Add some tokens to the liquidity pool
         await program.methods.addLiquidity(new anchor.BN(amount_to_send_a), new anchor.BN(amount_to_send_b))
-            .accounts({
+            .accountsStrict({
                 liquidityPool: liquidityPoolPda,
                 mintA: tokenA,
                 userTokenA: userTokenAccountA.address,
@@ -849,6 +869,8 @@ it("Can Add Liquidity", async () => {
                 lpToken: lpToken,
                 userLpTokenAccount: userAssociatedLPToken.address,
                 user: user_account.publicKey,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+                systemProgram: SystemProgram.programId
             })
             .signers([user_account])
             .rpc();
@@ -869,7 +891,7 @@ it("Can Add Liquidity", async () => {
         try {
             const amount_to_swap = 534_321;
             await program.methods.swapTokens(new anchor.BN(amount_to_swap))
-                .accounts({
+                .accountsStrict({
                     liquidityPool: liquidityPoolPda,
                     // This will be standard so that token A is swapped for token b
                     mintA: tokenC,
@@ -880,6 +902,8 @@ it("Can Add Liquidity", async () => {
                     lpTokenB: lpTokenAccountB,
                     lpToken: lpToken,
                     user: user_account.publicKey,
+                    tokenProgram: TOKEN_2022_PROGRAM_ID,
+                    systemProgram: SystemProgram.programId
                 })
                 .signers([user_account])
                 .rpc();
