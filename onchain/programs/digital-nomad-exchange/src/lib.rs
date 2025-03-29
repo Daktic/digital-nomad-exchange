@@ -48,18 +48,29 @@ pub mod digital_nomad_exchange {
 
         // Transfer tokens from user to pool
         ctx.accounts.transfer_to_pool_a(amount_a)?;
-        ctx.accounts.transfer_to_pool_b(bump, amount_b)?;
+        ctx.accounts.transfer_to_pool_b(amount_b)?;
 
-        // Create Mint LP transaction
+        // Create Mint LP transaction with the liquidity pool PDA as the authority.
         let cpi_accounts = MintTo {
             mint: ctx.accounts.lp_token.to_account_info(),
             to: ctx.accounts.user_lp_token_account.to_account_info(),
-            authority: ctx.accounts.user.to_account_info(),
+            authority: ctx.accounts.liquidity_pool.to_account_info(), // LP PDA
         };
-        let cpi_program = ctx.accounts.token_program.to_account_info();
-        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
 
-        // calculate amount to mint:
+        let mint_a = ctx.accounts.mint_a.key();
+        let mint_b = ctx.accounts.mint_b.key();
+        let seeds = &[
+            b"liquidity_pool",
+            mint_a.as_ref(),
+            mint_b.as_ref(),
+            &[bump],
+        ];
+        let signer_seeds = &[&seeds[..]];
+
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer_seeds);
+
+        // Calculate the LP tokens to mint.
         let amount_to_mint = LiquidityPool::calculate_lp_amount_to_mint(
             LPDepositRequest {
                 token_a_balance: ctx.accounts.lp_token_a.amount,
@@ -73,7 +84,7 @@ pub mod digital_nomad_exchange {
             }
         );
 
-        // Execute Mint LP transaction
+        // Execute the mint instruction.
         mint_to(cpi_ctx, amount_to_mint)?;
 
         Ok(())
@@ -382,6 +393,7 @@ pub struct AddLiquidity<'info> {
         bump
     )]
     pub lp_token_b: Box<InterfaceAccount<'info, TokenAccount>>,
+    #[account(mut)]
     pub lp_token: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut)]
     pub user_lp_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -413,28 +425,16 @@ impl<'info> AddLiquidity<'info> {
         )
     }
 
-    fn transfer_to_pool_b(&self, bump:u8, amount: u64) -> Result<()> {
+    fn transfer_to_pool_b(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self.user_token_b.to_account_info(),
             to: self.lp_token_b.to_account_info(),
             authority: self.user.to_account_info(),
         };
-        // Build the seeds array to match how LiquidityPool PDA was derived
-        let mint_a = self.mint_a.key();
-        let mint_b = self.mint_b.key();
-        let seeds = &[
-            b"liquidity_pool",
-            mint_a.as_ref(),
-            mint_b.as_ref(),
-            &[bump],
-        ];
-        let signer_seeds = &[&seeds[..]];
-
         transfer(
-            CpiContext::new_with_signer(
+            CpiContext::new(
                 self.token_program.to_account_info(),
                 cpi_accounts,
-                signer_seeds
             ),
             amount
         )
