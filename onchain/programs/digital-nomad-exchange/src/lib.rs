@@ -450,13 +450,13 @@ pub struct RemoveLiquidity<'info> {
         seeds = [b"liquidity_pool", mint_a.key().as_ref(), mint_b.key().as_ref()],
         bump,
     )]
-    pub liquidity_pool: Account<'info, LiquidityPool>,
-    pub mint_a: InterfaceAccount<'info, Mint>,
+    pub liquidity_pool: Box<Account<'info, LiquidityPool>>,
+    pub mint_a: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut, constraint = user_token_a.mint == mint_a.key())]
-    pub user_token_a: InterfaceAccount<'info, TokenAccount>,
-    pub mint_b: InterfaceAccount<'info, Mint>,
+    pub user_token_a: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub mint_b: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut, constraint = user_token_b.mint == mint_b.key())]
-    pub user_token_b: InterfaceAccount<'info, TokenAccount>,
+    pub user_token_b: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         init_if_needed,
         payer = user,
@@ -465,7 +465,7 @@ pub struct RemoveLiquidity<'info> {
         seeds = [b"pool_token_a", mint_a.key().as_ref()],
         bump
     )]
-    pub lp_token_a: InterfaceAccount<'info, TokenAccount>,
+    pub lp_token_a: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         init_if_needed,
         payer = user,
@@ -474,11 +474,11 @@ pub struct RemoveLiquidity<'info> {
         seeds = [b"pool_token_b", mint_b.key().as_ref()],
         bump
     )]
-    pub lp_token_b: InterfaceAccount<'info, TokenAccount>,
+    pub lp_token_b: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut)]
-    pub lp_token: InterfaceAccount<'info, Mint>,
+    pub lp_token: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut)]
-    pub user_lp_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub user_lp_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut, signer)]
     pub user: Signer<'info>,
     #[account(address = spl_token_2022::ID)]
