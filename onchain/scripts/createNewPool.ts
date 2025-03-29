@@ -2,7 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import {Program} from "@coral-xyz/anchor";
 import {
     ASSOCIATED_TOKEN_PROGRAM_ID,
-    createAssociatedTokenAccount,
+    createAssociatedTokenAccount, createMint,
     getAssociatedTokenAddress,
     mintTo,
     TOKEN_2022_PROGRAM_ID
@@ -13,6 +13,7 @@ import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 import {PublicKey, SystemProgram,} from "@solana/web3.js";
 import * as console from "node:console";
 
+const amountToMint = 1000 * 10 ** 9;
 
 // Create a fungible token mint with MPL metadata.
 async function createFungibleTokenWithMetadata(provider: anchor.AnchorProvider, metadata: any, signerAccount: anchor.web3.Keypair) {
@@ -211,8 +212,9 @@ const depositIntoPool = async (provider: anchor.AnchorProvider, tokenA: anchor.w
         lpTokenBPda
     } = derivePDAAddresses(tokenA, tokenB, program);
 
-    // Deposit 100 of Token A and Token B into the pool.
-    await program.methods.addLiquidity(new anchor.BN(500), new anchor.BN(500))
+    // Deposit 500 of Token A and Token B into the pool.
+    const amountToDeposit = 500 * 10 ** 9;
+    await program.methods.addLiquidity(new anchor.BN(amountToDeposit), new anchor.BN(amountToDeposit))
         .accountsStrict({
             liquidityPool: liquidityPoolPda,
             mintA: tokenA,
@@ -255,13 +257,26 @@ const main = async () => {
     };
     let tokenB = await createFungibleTokenWithMetadata(provider, tokenBMetadata, user_account);
 
-    // Create LP token mint using the same helper (instead of an associated token account).
+    // Create LP token mint
+    // Can we pass this in?
     const lpTokenMetadata = {
         name: "LP Token",
         symbol: "LPT",
         uri: "https://example.com/lp-metadata.json" // Replace with your LP metadata URI
     };
-    const lpToken = new PublicKey(await createFungibleTokenWithMetadata(provider, lpTokenMetadata, user_account));
+
+    const program = anchor.workspace.DigitalNomadExchange as Program<DigitalNomadExchange>;
+    const {liquidityPoolPda} = derivePDAAddresses(tokenA, tokenB, program);
+    const lpToken= await createMint(
+        provider.connection,
+        user_account,
+        liquidityPoolPda,
+        liquidityPoolPda,
+        9,
+        undefined,
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+    );
 
     // --- Sort mints so that tokenA is the canonical (lower) mint ---
     const sortedMints = sortTokens(tokenA, tokenB);
@@ -315,7 +330,7 @@ const main = async () => {
             tokenA,
             userTokenAccountA,
             user_account.publicKey,
-            1000,
+            amountToMint,
             [], // multiSigners (optional)
             undefined, // confirmOptions (optional)
             TOKEN_2022_PROGRAM_ID // programId
@@ -326,7 +341,7 @@ const main = async () => {
             tokenB,
             userTokenAccountB,
             user_account.publicKey,
-            1000,
+            amountToMint,
             [], // multiSigners (optional)
             undefined, // confirmOptions (optional)
             TOKEN_2022_PROGRAM_ID // programId
