@@ -458,8 +458,7 @@ pub struct RemoveLiquidity<'info> {
     #[account(mut, constraint = user_token_b.mint == mint_b.key())]
     pub user_token_b: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
-        init_if_needed,
-        payer = user,
+        mut,
         token::mint = mint_a,
         token::authority = liquidity_pool,
         seeds = [b"pool_token_a", mint_a.key().as_ref()],
@@ -467,8 +466,7 @@ pub struct RemoveLiquidity<'info> {
     )]
     pub lp_token_a: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
-        init_if_needed,
-        payer = user,
+        mut,
         token::mint = mint_b,
         token::authority = liquidity_pool,
         seeds = [b"pool_token_b", mint_b.key().as_ref()],
