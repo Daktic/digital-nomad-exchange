@@ -119,7 +119,7 @@ const Pools = () => {
                         },
                         symbol: `${metadataA?.symbol}-${metadataB?.symbol}`,
                     };
-                    setCardDisplay([poolData]);
+                    setCardDisplay((prevCardDisplay) => [...prevCardDisplay, poolData]);
                 }
             } catch (error) {
                 console.error("Error fetching token metadata:", error);
