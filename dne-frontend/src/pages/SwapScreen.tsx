@@ -12,7 +12,7 @@ import type {DigitalNomadExchange} from "../../../onchain/target/types/digital_n
 import {Buffer} from "buffer";
 import {getTokenMetadata} from "@solana/spl-token";
 
-const fee = 0.25;
+const fee = 0.003;
 
 const Swap = () => {
     const { connection } = useConnection();
