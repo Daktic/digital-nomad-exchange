@@ -49,7 +49,13 @@ function sortTokens(
 
 
 
-async function getAssociatedUserTokenAccounts(provider:anchor.AnchorProvider ,tokenA: PublicKey, tokenB: PublicKey, lpToken: PublicKey, user_account: anchor.web3.Keypair) {
+async function getAssociatedUserTokenAccounts(provider:anchor.AnchorProvider,
+                                              tokenA: PublicKey,
+                                              tokenB: PublicKey,
+                                              lpToken: PublicKey,
+                                              user_account: anchor.web3.Keypair,
+                                              wallet_account?: PublicKey
+) {
     console.log("Creating associated token accounts");
     await checkAccountInitialization(provider, tokenA);
     await checkAccountInitialization(provider, tokenB);
@@ -58,6 +64,7 @@ async function getAssociatedUserTokenAccounts(provider:anchor.AnchorProvider ,to
     let userTokenAccountA: PublicKey;
     let userTokenAccountB: PublicKey;
     let userTokenAccountLP: PublicKey;
+    let walletTokenAccountA: PublicKey;
 
     try {
         userTokenAccountA = new PublicKey(await getAssociatedTokenAddress(
@@ -103,10 +110,27 @@ async function getAssociatedUserTokenAccounts(provider:anchor.AnchorProvider ,to
         throw error;
     }
 
+    if (wallet_account) {
+        try {
+            walletTokenAccountA = new PublicKey(await getAssociatedTokenAddress(
+                tokenA,
+                wallet_account,
+                false,
+                TOKEN_2022_PROGRAM_ID,
+                ASSOCIATED_TOKEN_PROGRAM_ID,
+            ));
+            console.log(`User Token Account LP: ${userTokenAccountLP}`);
+        } catch (error) {
+            console.error("Error creating associated token account for Wallet Token A:", error);
+            throw error;
+        }
+    }
+
+
     if (!userTokenAccountA || !userTokenAccountB || !userTokenAccountLP) {
         throw new Error("Error creating associated token accounts");
     }
-    return {userTokenAccountA, userTokenAccountB, userTokenAccountLP};
+    return {userTokenAccountA, userTokenAccountB, userTokenAccountLP, walletTokenAccountA};
 }
 
 function derivePDAAddresses(tokenA: PublicKey, tokenB: PublicKey, program: Program<DigitalNomadExchange>) {
@@ -242,6 +266,9 @@ const main = async () => {
     // Get the user account from the provider wallet.
     const user_account = (provider.wallet as NodeWallet).payer;
 
+    // This should be the wallet address of the account doing the swap.
+    const wallet_address = new PublicKey("8mUp6QtpVLea1GW5xa7vyFqDRxFx66c6MnADrsr8q2EE")
+
     // Create mints for Token A and Token B via MPL metadata.
     const tokenAMetadata = {
         name: "USD Coin",
@@ -318,9 +345,19 @@ const main = async () => {
             ASSOCIATED_TOKEN_PROGRAM_ID
         );
 
+        await createAssociatedTokenAccount(
+            provider.connection,
+            user_account,
+            tokenA,
+            wallet_address,
+            undefined,
+            TOKEN_2022_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+
         console.log("Token Accounts created successfully");
 
-        const {userTokenAccountA, userTokenAccountB} = await getAssociatedUserTokenAccounts(provider, tokenA, tokenB, lpToken, user_account);
+        const {userTokenAccountA, userTokenAccountB, walletTokenAccountA} = await getAssociatedUserTokenAccounts(provider, tokenA, tokenB, lpToken, user_account, wallet_address);
 
 
         // Mint tokens to user account
@@ -346,6 +383,20 @@ const main = async () => {
             undefined, // confirmOptions (optional)
             TOKEN_2022_PROGRAM_ID // programId
         );
+
+    //     Mint token A to the wallet account to swap tokens
+        await mintTo(
+            provider.connection,
+            user_account,
+            tokenA,
+            walletTokenAccountA,
+            wallet_address,
+            amountToMint,
+            [],
+            undefined,
+            TOKEN_2022_PROGRAM_ID
+        )
+
     } catch (error) {
         console.error("Error minting tokens to user account:", error);
         throw error;
