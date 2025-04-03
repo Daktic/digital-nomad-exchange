@@ -5,7 +5,7 @@ import {Asset, Pool} from "../../types"
 interface poolCardProps {
     pool: Pool;
 }
-interface PoolAssetImgProps {
+interface PoolAssetProps {
     tokenA: Asset;
     tokenB: Asset;
 }
@@ -14,44 +14,50 @@ interface PoolAssetSymbolProps {
     symbol: string;
 }
 
-interface PoolAssetAPYProps {
-    apy: number;
+const buildSolScanUrl = (address: string) => {
+    return `https://solscan.io/address/${address}?cluster=devnet`;
 }
 
+const buildSwapUrl = (address: string) => {
+    return `http://localhost:5173/swap?pool=${address}`;
+}
 
 const PoolCard = ({pool}: poolCardProps) => {
 
     return (
-        <a href={`swap/${pool.symbol}`}>
+        <a href={buildSwapUrl(pool.address)}>
             <div className={styles.card}>
-                <TokenImgs tokenA={pool.tokenA} tokenB={pool.tokenB}/>
-                <PoolName symbol={pool.symbol}/>
-                <PoolAPY apy={pool.apy}/>
+                    <TokenImgs tokenA={pool.tokenA} tokenB={pool.tokenB} />
+                    <PoolSymbol symbol={pool.symbol}/>
+                <PoolName tokenA={pool.tokenA} tokenB={pool.tokenB}/>
             </div>
         </a>
 )
 }
 
-const TokenImgs = ({tokenA, tokenB}: PoolAssetImgProps) => (
+const TokenImgs = ({tokenA, tokenB}: PoolAssetProps) => (
    <div className={styles.poolImageContainer}>
         <div className={styles.assetImgContainer}>
             <img className={styles.assetImg} alt={tokenA.name} src={tokenA.token_img}/>
         </div>
         <div className={styles.assetImgContainer}>
-            <img className={styles.assetImg} alt={tokenA.name} src={tokenB.token_img}/>
+            <img className={styles.assetImg} alt={tokenB.name} src={tokenB.token_img}/>
         </div>
    </div>
 )
 
-const PoolName = ({symbol}: PoolAssetSymbolProps) => (
+const PoolSymbol = ({symbol}: PoolAssetSymbolProps) => (
     <div>
         <p>{symbol}</p>
     </div>
 )
 
-const PoolAPY = ({apy}: PoolAssetAPYProps) => (
+const PoolName = ({tokenA, tokenB}: PoolAssetProps) => (
     <div>
-        <p>{apy}</p>
+        <a href={buildSolScanUrl(tokenA.address)} target="_blank" rel="noopener noreferrer">
+            <p>{tokenA.name}</p></a>
+        <a href={buildSolScanUrl(tokenB.address)} target="_blank" rel="noopener noreferrer">
+            <p>{tokenB.name}</p></a>
     </div>
 )
 

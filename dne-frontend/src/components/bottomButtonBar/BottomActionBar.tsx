@@ -1,100 +1,87 @@
-import {Link} from "wouter";
+import { Link } from "wouter";
 import styles from "./BottomActionBar.module.css";
-import {PortfolioIcon, SupplyIcon, SwapIcon, WalletIcon} from "./ButtonBarIcons.tsx";
-import {WalletConnectionOptions} from "../walletConnection/WalletConnectionOptions.tsx";
-import {useWallet} from "../../WalletProvider.tsx";
-import {useState} from "preact/hooks";
+import { PortfolioIcon, SupplyIcon, SwapIcon, WalletIcon } from "./ButtonBarIcons.tsx";
+import { WalletConnectionOptions } from "../walletConnection/WalletConnectionOptions.tsx";
 
+import { useState } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
 
-const truncateAddress = (address: string) => {
-        return address.slice(0, 5);
-}
+const truncateAddress = (address: string) => address.slice(0, 5);
 
 const BottomNavbar = () => {
-
-        const [walletConnected, setWalletConnected] = useState(false);
-        const [walletAddress, setWalletAddress] = useState("");
-
-        const {
-                detectWallets,
-                connectSelectedWallet,
-                wallets,
-                // selectedWallet,
-                // accounts
-        } = useWallet();
-
-        // show/hide the popup
+        const { publicKey, select, connect, disconnect, wallets } = useWallet();
         const [showWalletOptions, setShowWalletOptions] = useState(false);
+        const [selectedWallet, setSelectedWallet] = useState(null);
 
         function handleOpenWalletOptions() {
-                // find wallets
-                detectWallets();
-                // toggle the Visual component
-                setShowWalletOptions(!showWalletOptions);
+                if (publicKey) {
+                        disconnect(); // Disconnect if already connected
+                } else {
+                        console.log(wallets);
+                        setShowWalletOptions(!showWalletOptions);
+                }
         }
 
-        // user picked a specific wallet from the list
         async function handleWalletClick(wallet: any) {
-                // connect to that wallet
-                const accounts = await connectSelectedWallet(wallet);
-                // close the UI component
-                setShowWalletOptions(false);
-                // Get and show wallet Address in icon
-                if (accounts && accounts.length > 0) {
-                        setWalletConnected(true);
-                        const truncatedAddress= truncateAddress(accounts[0].address);
-                        setWalletAddress(truncatedAddress);
+                try {
+                        select(wallet.adapter.name);
+                        await connect();
+                        setSelectedWallet(wallet);
+                        setShowWalletOptions(false);
+                } catch (error) {
+                        console.error("Failed to connect wallet:", error);
                 }
         }
 
         return (
-        <div className={styles.navbar}>
-                <div className={styles.item}>
-                        <Link to="/portfolio" >
-                                <PortfolioIcon/>
-                        </Link>
-                </div>
-                <div className={styles.item}>
-                        <Link to="/swap" className={styles.item}>
-                                <SwapIcon/>
-                        </Link>
-                </div>
-                <div className={styles.item}>
-                        <Link to="/pools" className={styles.item}>
-                                <SupplyIcon/>
-                        </Link>
-                </div>
-                <div className={styles.item}>
-                        <WalletIconSymbol walletConnected={walletConnected} handleClick={handleOpenWalletOptions} walletAddress={walletAddress}/>
-                </div>
-                        {
-                        // Show wallet connection options if clicked
-                    showWalletOptions && (
+            <div className={styles.navbar}>
+                    <div className={styles.item}>
+                            <Link to="/portfolio">
+                                    <PortfolioIcon />
+                            </Link>
+                    </div>
+                    <div className={styles.item}>
+                            <Link to="/swap">
+                                    <SwapIcon />
+                            </Link>
+                    </div>
+                    <div className={styles.item}>
+                            <Link to="/pools">
+                                    <SupplyIcon />
+                            </Link>
+                    </div>
+                    <div className={styles.item}>
+                            <WalletIconSymbol
+                                wallet={selectedWallet}
+                                handleClick={handleOpenWalletOptions}
+                            />
+                    </div>
+
+                    {showWalletOptions && (
                         <WalletConnectionOptions
-                                wallets={wallets}
-                                onSelect={handleWalletClick}
-                                />
-                    )
-                }
-        </div>
-        )
+                            wallets={wallets}
+                            onSelect={handleWalletClick}
+                        />
+                    )}
+            </div>
+        );
 };
 
-interface WalletIconSybolProps  {
-        walletAddress?: string
-        walletConnected: boolean
+interface WalletIconSymbolProps {
+        wallet: any;
         handleClick?: () => void;
 }
 
-const WalletIconSymbol = ({walletAddress, walletConnected, handleClick}: WalletIconSybolProps )=> {
-        const fillColor = walletConnected ? "rgba(128, 0, 128, 0.7)" : "white";
+const WalletIconSymbol = ({ wallet, handleClick }: WalletIconSymbolProps) => {
+        const fillColor = wallet?.adapter.connected ? "rgba(128, 0, 128, 0.7)" : "white";
+        const walletAddress = wallet ? truncateAddress(wallet.adapter.publicKey.toBase58()) : "Connect";
 
         return (
             <div className={`${styles.item} ${styles.walletIconItem}`} onClick={handleClick}>
                     <WalletIcon fillColor={fillColor} />
                     <p>{walletAddress}</p>
             </div>
-        )
-}
+        );
+};
 
-export {BottomNavbar};
+export { BottomNavbar };

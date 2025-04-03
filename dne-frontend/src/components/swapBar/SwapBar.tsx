@@ -22,6 +22,10 @@ interface InputAmountProps {
     updateFunction: (amount: number) => void
 }
 
+interface ButtonBarProps {
+    supply: boolean;
+    handleClick: () => void;
+}
 
 
 
@@ -119,8 +123,8 @@ const Switch = ({checked, setChecked}: SwitchProps) => {
     )
 }
 
-export const ButtonBar = ({supply}: { supply: boolean }) => (
-    <div className={styles.buttonBarContainer}>
+export const ButtonBar = ({supply, handleClick}: ButtonBarProps) => (
+    <div className={styles.buttonBarContainer} onClick={handleClick}>
         {supply ? <SupplyButtons /> : <SwapButton />}
     </div>
 )

@@ -1,7 +1,11 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Burn, Mint, MintTo, Token, TokenAccount, Transfer};
-use anchor_spl::token::spl_token;
 use anchor_spl::token::spl_token::error::TokenError::InvalidMint;
+use anchor_spl::token_interface::{
+    spl_token_2022,
+    Mint, MintTo, Burn, TokenAccount, TokenInterface, Transfer,
+    mint_to, transfer, burn
+};
+
 use fixed::types::I64F64;
 
 declare_id!("HFMM2nW3ARsBFEKsQnx5mxrTThMKiMGkyETeJ5i2zgNx");
@@ -23,9 +27,16 @@ pub mod digital_nomad_exchange {
         liquidity_pool.token_b = token_b;
         liquidity_pool.lp_token_a = ctx.accounts.lp_token_a.key();
         liquidity_pool.lp_token_b = ctx.accounts.lp_token_b.key();
-
         liquidity_pool.lp_token = ctx.accounts.lp_token.key();
         liquidity_pool.owner = ctx.accounts.user.key();
+
+        msg!("Token A (MINT): {}", liquidity_pool.token_a);
+        msg!("Token B (MINT): {}", liquidity_pool.token_b);
+
+        Ok(())
+    }
+
+    pub fn initialize_pda(ctx: Context<CreateLiquidityPoolPDA>) -> Result<()> {
         Ok(())
     }
 
@@ -37,18 +48,29 @@ pub mod digital_nomad_exchange {
 
         // Transfer tokens from user to pool
         ctx.accounts.transfer_to_pool_a(amount_a)?;
-        ctx.accounts.transfer_to_pool_b(bump, amount_b)?;
+        ctx.accounts.transfer_to_pool_b(amount_b)?;
 
-        // Create Mint LP transaction
+        // Create Mint LP transaction with the liquidity pool PDA as the authority.
         let cpi_accounts = MintTo {
             mint: ctx.accounts.lp_token.to_account_info(),
             to: ctx.accounts.user_lp_token_account.to_account_info(),
-            authority: ctx.accounts.user.to_account_info(),
+            authority: ctx.accounts.liquidity_pool.to_account_info(), // LP PDA
         };
-        let cpi_program = ctx.accounts.token_program.to_account_info();
-        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
 
-        // calculate amount to mint:
+        let mint_a = ctx.accounts.mint_a.key();
+        let mint_b = ctx.accounts.mint_b.key();
+        let seeds = &[
+            b"liquidity_pool",
+            mint_a.as_ref(),
+            mint_b.as_ref(),
+            &[bump],
+        ];
+        let signer_seeds = &[&seeds[..]];
+
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer_seeds);
+
+        // Calculate the LP tokens to mint.
         let amount_to_mint = LiquidityPool::calculate_lp_amount_to_mint(
             LPDepositRequest {
                 token_a_balance: ctx.accounts.lp_token_a.amount,
@@ -62,8 +84,8 @@ pub mod digital_nomad_exchange {
             }
         );
 
-        // Execute Mint LP transaction
-        token::mint_to(cpi_ctx, amount_to_mint)?;
+        // Execute the mint instruction.
+        mint_to(cpi_ctx, amount_to_mint)?;
 
         Ok(())
     }
@@ -273,23 +295,42 @@ impl LiquidityPool {
     }
 }
 
+// Context for initializing the PDA
+#[derive(Accounts)]
+pub struct CreateLiquidityPoolPDA<'info> {
+    #[account(
+            init,
+            payer = user,
+            space = 8 + (6 * 32),
+            // This enforces that the tokens are provided in sorted order by the client
+            constraint = token_a_mint.key() < token_b_mint.key(),
+            seeds = [b"liquidity_pool", token_a_mint.key().as_ref(), token_b_mint.key().as_ref()],
+            bump
+    )]
+    pub liquidity_pool: Account<'info, LiquidityPool>,
+    pub token_a_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub token_b_mint: Box<InterfaceAccount<'info, Mint>>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
 // The context for the initialize function.
 // It contains the liquidity pool account, the two token accounts, the LP token mint, the user account, the system program and the rent sysvar.
 #[derive(Accounts)]
 pub struct CreateLiquidityPool<'info> {
     #[account(
-        init,
-        payer = user,
-        space = 8 + (6 * 32),
         // This enforces that the tokens are provided in sorted order by the client
         constraint = token_a_mint.key() < token_b_mint.key(),
         seeds = [b"liquidity_pool", token_a_mint.key().as_ref(), token_b_mint.key().as_ref()],
+        mut,
         bump
     )]
-    pub liquidity_pool: Account<'info, LiquidityPool>,
-    pub token_a_mint: Account<'info, Mint>,
-    pub token_b_mint: Account<'info, Mint>,
-    pub lp_token: Account<'info, Mint>,
+    pub liquidity_pool: Box<Account<'info, LiquidityPool>>,
+    pub token_a_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub token_b_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub lp_token: Box<InterfaceAccount<'info, Mint>>,
     // Need to initialize the token accounts for the PDA
     // Create the pool's token-account for token A
     #[account(
@@ -300,7 +341,7 @@ pub struct CreateLiquidityPool<'info> {
         seeds = [b"pool_token_a", token_a_mint.key().as_ref()],
         bump
     )]
-    pub lp_token_a: Account<'info, TokenAccount>,
+    pub lp_token_a: Box<InterfaceAccount<'info, TokenAccount>>,
 
     // Create the pool's token-account for token B
     #[account(
@@ -311,11 +352,11 @@ pub struct CreateLiquidityPool<'info> {
         seeds = [b"pool_token_b", token_b_mint.key().as_ref()],
         bump
     )]
-    pub lp_token_b: Account<'info, TokenAccount>,
+    pub lp_token_b: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut)]
     pub user: Signer<'info>,
-    #[account(address = spl_token::ID)]
-    pub token_program: Program<'info, Token>,
+    #[account(address = spl_token_2022::ID)]
+    pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>
 }
@@ -329,38 +370,37 @@ pub struct AddLiquidity<'info> {
         seeds = [b"liquidity_pool", mint_a.key().as_ref(), mint_b.key().as_ref()],
         bump,
     )]
-    pub liquidity_pool: Account<'info, LiquidityPool>,
-    pub mint_a: Account<'info, Mint>,
+    pub liquidity_pool: Box<Account<'info, LiquidityPool>>,
+    pub mint_a: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut, constraint = user_token_a.mint == mint_a.key())]
-    pub user_token_a: Account<'info, TokenAccount>,
-    pub mint_b: Account<'info, Mint>,
+    pub user_token_a: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub mint_b: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut, constraint = user_token_b.mint == mint_b.key())]
-    pub user_token_b: Account<'info, TokenAccount>,
+    pub user_token_b: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
-        init_if_needed,
-        payer = user,
+        mut,
         token::mint = mint_a,
         token::authority = liquidity_pool,
         seeds = [b"pool_token_a", mint_a.key().as_ref()],
         bump
     )]
-    pub lp_token_a: Account<'info, TokenAccount>,
+    pub lp_token_a: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
-        init_if_needed,
-        payer = user,
+        mut,
         token::mint = mint_b,
         token::authority = liquidity_pool,
         seeds = [b"pool_token_b", mint_b.key().as_ref()],
         bump
     )]
-    pub lp_token_b: Account<'info, TokenAccount>,
+    pub lp_token_b: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut)]
-    pub lp_token: Account<'info, Mint>,
+    pub lp_token: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut)]
-    pub user_lp_token_account: Account<'info, TokenAccount>,
+    pub user_lp_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut, signer)]
     pub user: Signer<'info>,
-    pub token_program: Program<'info, Token>,
+    #[account(address = spl_token_2022::ID)]
+    pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
 
@@ -376,7 +416,7 @@ impl<'info> AddLiquidity<'info> {
             authority: self.user.to_account_info(),
         };
 
-        token::transfer(
+        transfer(
             CpiContext::new(
                 self.token_program.to_account_info(),
                 cpi_accounts,
@@ -385,28 +425,16 @@ impl<'info> AddLiquidity<'info> {
         )
     }
 
-    fn transfer_to_pool_b(&self, bump:u8, amount: u64) -> Result<()> {
+    fn transfer_to_pool_b(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self.user_token_b.to_account_info(),
             to: self.lp_token_b.to_account_info(),
             authority: self.user.to_account_info(),
         };
-        // Build the seeds array to match how LiquidityPool PDA was derived
-        let mint_a = self.mint_a.key();
-        let mint_b = self.mint_b.key();
-        let seeds = &[
-            b"liquidity_pool",
-            mint_a.as_ref(),
-            mint_b.as_ref(),
-            &[bump],
-        ];
-        let signer_seeds = &[&seeds[..]];
-
-        token::transfer(
-            CpiContext::new_with_signer(
+        transfer(
+            CpiContext::new(
                 self.token_program.to_account_info(),
                 cpi_accounts,
-                signer_seeds
             ),
             amount
         )
@@ -422,38 +450,37 @@ pub struct RemoveLiquidity<'info> {
         seeds = [b"liquidity_pool", mint_a.key().as_ref(), mint_b.key().as_ref()],
         bump,
     )]
-    pub liquidity_pool: Account<'info, LiquidityPool>,
-    pub mint_a: Account<'info, Mint>,
+    pub liquidity_pool: Box<Account<'info, LiquidityPool>>,
+    pub mint_a: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut, constraint = user_token_a.mint == mint_a.key())]
-    pub user_token_a: Account<'info, TokenAccount>,
-    pub mint_b: Account<'info, Mint>,
+    pub user_token_a: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub mint_b: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut, constraint = user_token_b.mint == mint_b.key())]
-    pub user_token_b: Account<'info, TokenAccount>,
+    pub user_token_b: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
-        init_if_needed,
-        payer = user,
+        mut,
         token::mint = mint_a,
         token::authority = liquidity_pool,
         seeds = [b"pool_token_a", mint_a.key().as_ref()],
         bump
     )]
-    pub lp_token_a: Account<'info, TokenAccount>,
+    pub lp_token_a: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
-        init_if_needed,
-        payer = user,
+        mut,
         token::mint = mint_b,
         token::authority = liquidity_pool,
         seeds = [b"pool_token_b", mint_b.key().as_ref()],
         bump
     )]
-    pub lp_token_b: Account<'info, TokenAccount>,
+    pub lp_token_b: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut)]
-    pub lp_token: Account<'info, Mint>,
+    pub lp_token: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut)]
-    pub user_lp_token_account: Account<'info, TokenAccount>,
+    pub user_lp_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut, signer)]
     pub user: Signer<'info>,
-    pub token_program: Program<'info, Token>,
+    #[account(address = spl_token_2022::ID)]
+    pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
 
@@ -479,7 +506,7 @@ impl<'info>RemoveLiquidity<'info> {
         ];
         let signer_seeds = &[&seeds[..]];
 
-        token::transfer(
+        transfer(
             CpiContext::new_with_signer(
                 self.token_program.to_account_info(),
                 cpi_accounts,
@@ -507,7 +534,7 @@ impl<'info>RemoveLiquidity<'info> {
         ];
         let signer_seeds = &[&seeds[..]];
 
-        token::transfer(
+        transfer(
             CpiContext::new_with_signer(
                 self.token_program.to_account_info(),
                 cpi_accounts,
@@ -534,7 +561,7 @@ impl<'info>RemoveLiquidity<'info> {
         ];
         let signer_seeds = &[&seeds[..]];
 
-        token::burn(
+        burn(
             CpiContext::new_with_signer(
                 self.token_program.to_account_info(),
                 cpi_accounts,
@@ -557,21 +584,22 @@ pub struct SwapTokens<'info> {
         bump,
     )]
     pub liquidity_pool: Box<Account<'info, LiquidityPool>>,
-    pub mint_a: Box<Account<'info, Mint>>,
+    pub mint_a: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut, constraint = user_token_a.mint == mint_a.key())]
-    pub user_token_a: Box<Account<'info, TokenAccount>>,
-    pub mint_b: Box<Account<'info, Mint>>,
+    pub user_token_a: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub mint_b: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut, constraint = user_token_b.mint == mint_b.key())]
-    pub user_token_b: Box<Account<'info, TokenAccount>>,
+    pub user_token_b: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut, constraint = lp_token_a.mint == mint_a.key())]
-    pub lp_token_a: Box<Account<'info, TokenAccount>>,
+    pub lp_token_a: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut, constraint = lp_token_b.mint == mint_b.key())]
-    pub lp_token_b: Box<Account<'info, TokenAccount>>,
+    pub lp_token_b: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut)]
-    pub lp_token: Box<Account<'info, Mint>>,
+    pub lp_token: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut, signer)]
     pub user: Signer<'info>,
-    pub token_program: Program<'info, Token>,
+    #[account(address = spl_token_2022::ID)]
+    pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
 
@@ -590,7 +618,7 @@ impl<'info>SwapTokens<'info> {
             authority: self.user.to_account_info(),
         };
 
-        token::transfer(
+        transfer(
             CpiContext::new(
                 self.token_program.to_account_info(),
                 cpi_accounts
@@ -616,7 +644,7 @@ impl<'info>SwapTokens<'info> {
         let cpi_accounts = Transfer {
             from: lp_account,
             to: user_account,
-            // This field means “the address that must sign the token::transfer”
+            // This field means “the address that must sign the transfer”
             authority: self.liquidity_pool.to_account_info(),
         };
 
@@ -632,7 +660,7 @@ impl<'info>SwapTokens<'info> {
 
         let signer_seeds = &[&seeds[..]];
 
-        token::transfer(
+        transfer(
             CpiContext::new_with_signer(
                 self.token_program.to_account_info(),
                 cpi_accounts,
@@ -880,5 +908,24 @@ mod tests {
         let bytes = address.to_bytes();
         println!("{:?}", bytes);
         assert_eq!(bytes, [179, 36, 109, 199, 29, 35, 224, 187, 140, 184, 103, 132, 24, 111, 50, 110, 230, 100, 210, 140, 213, 176, 129, 44, 188, 185, 6, 150, 120, 221, 184, 18], "Should print the bytes of the address");
+    }
+
+    #[test]
+    fn test_liquidity_pool_size() {
+        // This returns the size of LiquidityPool in bytes.
+        let size = std::mem::size_of::<LiquidityPool>();
+        println!("LiquidityPool size: {}", size);
+
+        // If LiquidityPool struct is defined as:
+        // pub struct LiquidityPool {
+        //     pub token_a: Pubkey,
+        //     pub token_b: Pubkey,
+        //     pub lp_token_a: Pubkey,
+        //     pub lp_token_b: Pubkey,
+        //     pub lp_token: Pubkey,
+        //     pub owner: Pubkey,
+        // }
+        // then its size should be 6 * 32 = 192 bytes.
+        assert_eq!(size, 192);
     }
 }

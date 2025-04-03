@@ -9,11 +9,27 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@coral-xyz/anchor": "^0.30.0",
+    "@metaplex-foundation/js": "^0.20.1",
+    "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
+    "@metaplex-foundation/umi": "^1.1.1",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.1.1",
+    "@metaplex-foundation/umi-bundle-tests": "^1.1.1",
+    "@solana/spl-token": "^0.4.9",
+    "@solana/wallet-adapter-base": "^0.9.23",
+    "@solana/wallet-adapter-react": "^0.15.35",
+    "@solana/wallet-adapter-react-ui": "^0.9.35",
+    "@solana/web3.js": "^1.98.0",
     "@wallet-standard/app": "^1.1.0",
+    "bs58": "^6.0.0",
+    "buffer": "^6.0.3",
+    "js-sha256": "^0.11.0",
     "preact": "^10.25.4",
+    "react-dom": "^19.0.0",
     "wouter": "^3.6.0"
   },
   "devDependencies": {
+    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
     "@preact/preset-vite": "^2.10.1",
     "@types/wouter": "^2.2.0",
     "typescript": "~5.7.2",

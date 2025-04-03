@@ -1,10 +1,15 @@
-import { render } from 'preact'
-import { App } from './app.tsx'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
 import './index.css'
-import {WalletProvider} from "./WalletProvider.tsx";
+import {App} from './app.tsx'
+import { Buffer } from 'buffer';
 
-render(
-    <WalletProvider>
+window.global = window;
+window.Buffer = window.Buffer || Buffer;
+
+
+createRoot(document.getElementById('root')!).render(
+    <StrictMode>
         <App />
-    </WalletProvider>
-    , document.getElementById('root')!)
+    </StrictMode>,
+)

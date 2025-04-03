@@ -1,9 +1,8 @@
 export interface Asset {
-    symbol: string,
-    name: string,
-    token_img: string,
-    address: string,
-    price: number,
+    symbol: string | undefined,
+    name: string | undefined,
+    token_img: string | undefined,
+    address: string | undefined,
 }
 
 export interface Wallet {
@@ -11,9 +10,19 @@ export interface Wallet {
 }
 
 export interface Pool {
+    address: string;
     symbol: string,
-    apy: number,
     tokenA: Asset,
     tokenB: Asset,
     lpToken: Asset,
 }
+
+export type liquidtyPoolDisplay = {
+    pool: string;
+    tokenA: string;
+    tokenB: string;
+    lpTokenA: string;
+    lpTokenB: string;
+    lpToken: string;
+    owner: string;
+};
