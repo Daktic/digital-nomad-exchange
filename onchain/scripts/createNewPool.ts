@@ -119,7 +119,7 @@ async function getAssociatedUserTokenAccounts(provider:anchor.AnchorProvider,
                 TOKEN_2022_PROGRAM_ID,
                 ASSOCIATED_TOKEN_PROGRAM_ID,
             ));
-            console.log(`User Token Account LP: ${userTokenAccountLP}`);
+            console.log(`User walletTokenAccountA: ${userTokenAccountLP}`);
         } catch (error) {
             console.error("Error creating associated token account for Wallet Token A:", error);
             throw error;
@@ -267,7 +267,7 @@ const main = async () => {
     const user_account = (provider.wallet as NodeWallet).payer;
 
     // This should be the wallet address of the account doing the swap.
-    const wallet_address = new PublicKey("8mUp6QtpVLea1GW5xa7vyFqDRxFx66c6MnADrsr8q2EE")
+    const wallet_address = new PublicKey("B34XtRbwgkN2Kjrr61in8qC2ArniemrxuDzAZJUL3T4o")
 
     // Create mints for Token A and Token B via MPL metadata.
     const tokenAMetadata = {
@@ -372,6 +372,8 @@ const main = async () => {
             undefined, // confirmOptions (optional)
             TOKEN_2022_PROGRAM_ID // programId
         );
+        // Load bearing comment?
+        console.log("A GOOD!")
         await mintTo(
             provider.connection,
             user_account,
@@ -390,7 +392,7 @@ const main = async () => {
             user_account,
             tokenA,
             walletTokenAccountA,
-            wallet_address,
+            user_account.publicKey,
             amountToMint,
             [],
             undefined,
