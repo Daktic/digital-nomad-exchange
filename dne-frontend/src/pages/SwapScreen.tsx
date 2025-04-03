@@ -10,9 +10,70 @@ import {useAnchorWallet, useConnection} from "@solana/wallet-adapter-react";
 import idl from "../../../onchain/target/idl/digital_nomad_exchange.json";
 import type {DigitalNomadExchange} from "../../../onchain/target/types/digital_nomad_exchange.ts";
 import {Buffer} from "buffer";
-import {getTokenMetadata, TOKEN_2022_PROGRAM_ID} from "@solana/spl-token";
+import {getAssociatedTokenAddress, getTokenMetadata, TOKEN_2022_PROGRAM_ID} from "@solana/spl-token";
+import {ASSOCIATED_PROGRAM_ID} from "@coral-xyz/anchor/dist/cjs/utils/token";
+import * as anchor from "@coral-xyz/anchor";
 
 const fee = 0.003;
+
+interface AssociatedAddresses {
+    userTokenAccountA: PublicKey;
+    userTokenAccountB: PublicKey;
+    userTokenAccountLP: PublicKey;
+    lpTokenAPda: PublicKey;
+    lpTokenBPda: PublicKey;
+}
+const getAssociatedAddresses = async (
+    program:any,
+    tokenA:PublicKey,
+    tokenB:PublicKey,
+    lpToken:PublicKey,
+    user:PublicKey,
+
+                                ): Promise<AssociatedAddresses> => {
+
+    const userTokenAccountA = await getAssociatedTokenAddress(
+        tokenA,
+        user,
+        false,
+        TOKEN_2022_PROGRAM_ID,
+        ASSOCIATED_PROGRAM_ID
+    );
+
+    const userTokenAccountB = await getAssociatedTokenAddress(
+        tokenB,
+        user,
+        false,
+        TOKEN_2022_PROGRAM_ID,
+        ASSOCIATED_PROGRAM_ID
+    );
+
+    const userTokenAccountLP = await getAssociatedTokenAddress(
+        lpToken,
+        user,
+        false,
+        TOKEN_2022_PROGRAM_ID,
+        ASSOCIATED_PROGRAM_ID
+    );
+
+    const [lpTokenAPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("pool_token_a"), tokenA.toBuffer()],
+        program.programId
+    );
+    const [lpTokenBPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("pool_token_b"), tokenB.toBuffer()],
+        program.programId
+    );
+
+    return {
+        userTokenAccountA,
+        userTokenAccountB,
+        userTokenAccountLP,
+        lpTokenAPda,
+        lpTokenBPda
+    }
+
+}
 
 const Swap = () => {
     const { connection } = useConnection();
@@ -38,7 +99,7 @@ const Swap = () => {
     const [poolAddress, setPoolAddress] = useState(poolAddressQueryParam);
     const [swapOrSupply, setSwapOrSupply] = useState(false);
 
-    const [poolMataData, setPoolMetaData] = useState<Pool | null>(null);
+    const [poolMetaData, setPoolMetaData] = useState<Pool | null>(null);
 
     const [tokenAAmount, setTokenAAmount] = useState(0);
     const [tokenBAmount, setTokenBAmount] = useState(0);
@@ -240,36 +301,69 @@ const Swap = () => {
     }, [poolAddress, wallet, connection]);
 
     const handleSwap = async () => {
-        if (!wallet || !poolAddress) {
+        if (!wallet || !poolAddress || !poolMetaData) {
             console.error("Wallet or pool address is missing");
             return;
         }
 
+        const mintAPub =  new PublicKey(poolMetaData.tokenA.address);
+        const mintBPub = new PublicKey(poolMetaData.tokenB.address);
+        const lpTokenPub = new PublicKey(poolMetaData.lpToken.address);
+        const walletPub = new PublicKey(wallet.publicKey);
+        const poolPub = new PublicKey(poolAddress);
+
+        const {
+            userTokenAccountA,
+            userTokenAccountB,
+            lpTokenAPda,
+            lpTokenBPda,
+        } = await getAssociatedAddresses(
+            program,
+            mintAPub,
+            mintBPub,
+            lpTokenPub,
+            walletPub
+        );
+
+        console.log("userTokenAccountA", userTokenAccountA.toBase58());
+        console.log("userTokenAccountB", userTokenAccountB.toBase58());
+        console.log("lpTokenAPda", lpTokenAPda.toBase58());
+        console.log("lpTokenBPda", lpTokenBPda.toBase58());
+
+
         try {
-            const transaction = new Transaction().add(
-                program.methods
+            const transaction = new Transaction();
+
+            const { blockhash } = await connection.getRecentBlockhash();
+            transaction.recentBlockhash = blockhash;
+            transaction.feePayer = walletPub;
+
+            transaction.add(
+                await program.methods
                     .swapTokens(
-                        new(tokenAAmount > 0 ? tokenAAmount : tokenBAmount),
+                        new anchor.BN(tokenAAmount),
                         false,
                     )
                     .accountsStrict({
-                        liquidityPool: poolAddress,
-                        mintA: poolMataData?.tokenA.address,
-                        userTokenA: TODO,
-                        mintB: poolMataData?.tokenB.address,
-                        userTokenB: TODO,
-                        lpTokenA: TODO,
-                        lpTokenB: TODO,
-                        lpToken: poolMataData?.lpToken.address,
-                        user: wallet.publicKey,
+                        liquidityPool: poolPub,
+                        mintA: mintAPub,
+                        userTokenA: userTokenAccountA,
+                        mintB: mintBPub,
+                        userTokenB: userTokenAccountB,
+                        lpTokenA: lpTokenAPda,
+                        lpTokenB: lpTokenBPda,
+                        lpToken: lpTokenPub,
+                        user: walletPub,
                         tokenProgram: TOKEN_2022_PROGRAM_ID,
-                        systemProgram: PublicKey.default,
+                        systemProgram: anchor.web3.SystemProgram.programId,
                     }).instruction()
             );
 
-            const signature = await wallet.signTransaction(transaction);
+            const signedTransaction = await wallet.signTransaction(transaction);
+            const signature = await provider.connection.sendRawTransaction(signedTransaction.serialize());
 
             console.log("Transaction successful with signature:", signature);
+            console.log(`View transaction on Solscan: https://solscan.io/tx/${signature}?cluster=devent`);
         } catch (error) {
             console.error("Transaction failed:", error);
         }
@@ -279,10 +373,10 @@ const Swap = () => {
         <div className={styles.page}>
             <SwitchBar checked={swapOrSupply} setChecked={setSwapOrSupply} />
             <div className={styles.swapBarContainer}>
-                {poolMataData &&
+                {poolMetaData &&
                     <SwapBar
-                        tokenA={poolMataData.tokenA}
-                        tokenB={poolMataData.tokenB}
+                        tokenA={poolMetaData.tokenA}
+                        tokenB={poolMetaData.tokenB}
                         tokenAAmount={tokenAAmount}
                         tokenBAmount={tokenBAmount}
                         lpAmount={lpTokenAmount}
@@ -293,10 +387,10 @@ const Swap = () => {
 
             </div>
             {
-                poolMataData && swapOrSupply ?
+                poolMetaData && swapOrSupply ?
                         (
                             <LPTokenSection
-                                token={poolMataData.lpToken}
+                                token={poolMetaData.lpToken}
                                 tokenAmount={lpTokenAmount}
                                 updateFunction={handleLPTokenInput}
                             />
