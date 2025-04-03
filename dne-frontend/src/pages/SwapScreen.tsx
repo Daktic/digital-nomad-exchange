@@ -239,6 +239,11 @@ const Swap = () => {
         }
     }, [poolAddress, wallet, connection]);
 
+    const handleSwap = async () => {
+        // Should swap tokens
+        console.log("Swapping Tokens");
+    }
+
     return (
         <div className={styles.page}>
             <SwitchBar checked={swapOrSupply} setChecked={setSwapOrSupply} />
@@ -268,7 +273,7 @@ const Swap = () => {
                 : (<div className={styles.spacer}></div>)
 
             }
-            <ButtonBar supply={swapOrSupply}/>
+            <ButtonBar supply={swapOrSupply} handleClick={handleSwap}/>
         </div>
     )
 };
