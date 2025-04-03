@@ -1,7 +1,7 @@
 import styles from "./Pages.module.css";
 import SwapBar, {ButtonBar, LPTokenSection, SwitchBar} from "../components/swapBar/SwapBar.tsx";
 import {useEffect, useState} from "react";
-import {Connection, PublicKey} from "@solana/web3.js";
+import {Connection, PublicKey, Transaction} from "@solana/web3.js";
 import {sha256} from "js-sha256";
 import bs58 from "bs58";
 import {liquidtyPoolDisplay, Pool} from "../types.ts";
@@ -10,7 +10,7 @@ import {useAnchorWallet, useConnection} from "@solana/wallet-adapter-react";
 import idl from "../../../onchain/target/idl/digital_nomad_exchange.json";
 import type {DigitalNomadExchange} from "../../../onchain/target/types/digital_nomad_exchange.ts";
 import {Buffer} from "buffer";
-import {getTokenMetadata} from "@solana/spl-token";
+import {getTokenMetadata, TOKEN_2022_PROGRAM_ID} from "@solana/spl-token";
 
 const fee = 0.003;
 
@@ -240,8 +240,39 @@ const Swap = () => {
     }, [poolAddress, wallet, connection]);
 
     const handleSwap = async () => {
-        // Should swap tokens
-        console.log("Swapping Tokens");
+        if (!wallet || !poolAddress) {
+            console.error("Wallet or pool address is missing");
+            return;
+        }
+
+        try {
+            const transaction = new Transaction().add(
+                program.methods
+                    .swapTokens(
+                        new(tokenAAmount > 0 ? tokenAAmount : tokenBAmount),
+                        false,
+                    )
+                    .accountsStrict({
+                        liquidityPool: poolAddress,
+                        mintA: poolMataData?.tokenA.address,
+                        userTokenA: TODO,
+                        mintB: poolMataData?.tokenB.address,
+                        userTokenB: TODO,
+                        lpTokenA: TODO,
+                        lpTokenB: TODO,
+                        lpToken: poolMataData?.lpToken.address,
+                        user: wallet.publicKey,
+                        tokenProgram: TOKEN_2022_PROGRAM_ID,
+                        systemProgram: PublicKey.default,
+                    }).instruction()
+            );
+
+            const signature = await wallet.signTransaction(transaction);
+
+            console.log("Transaction successful with signature:", signature);
+        } catch (error) {
+            console.error("Transaction failed:", error);
+        }
     }
 
     return (
