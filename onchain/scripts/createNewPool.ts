@@ -355,6 +355,16 @@ const main = async () => {
             ASSOCIATED_TOKEN_PROGRAM_ID
         );
 
+        await createAssociatedTokenAccount(
+            provider.connection,
+            user_account,
+            tokenB,
+            wallet_address,
+            undefined,
+            TOKEN_2022_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+
         console.log("Token Accounts created successfully");
 
         const {userTokenAccountA, userTokenAccountB, walletTokenAccountA} = await getAssociatedUserTokenAccounts(provider, tokenA, tokenB, lpToken, user_account, wallet_address);
