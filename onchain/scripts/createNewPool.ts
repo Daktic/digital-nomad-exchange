@@ -267,7 +267,7 @@ const main = async () => {
     const user_account = (provider.wallet as NodeWallet).payer;
 
     // This should be the wallet address of the account doing the swap.
-    const wallet_address = new PublicKey("B34XtRbwgkN2Kjrr61in8qC2ArniemrxuDzAZJUL3T4o")
+    const wallet_address = new PublicKey("7YZDbhkRFYSFo1xqV5eS8hiairc8rEiVDTWFioBp3ef5")
 
     // Create mints for Token A and Token B via MPL metadata.
     const tokenAMetadata = {
