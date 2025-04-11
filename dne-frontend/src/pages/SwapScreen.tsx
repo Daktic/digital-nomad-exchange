@@ -461,6 +461,48 @@ const Swap = () => {
     const handleRemoveLiquidity = async (props:poolActionProps) => {
         console.log("Remove Liquidity");
 
+        if (!props.userTokenAccountLP) {
+            console.error("User LP Token Account not found");
+            return;
+        }
+
+        try {
+            const transaction = new Transaction();
+
+            const { blockhash } = await connection.getRecentBlockhash();
+            transaction.recentBlockhash = blockhash;
+            transaction.feePayer = props.walletPublicKey;
+
+            transaction.add(
+                await program.methods
+                    .removeLiquidity(
+                        new anchor.BN(lpTokenAmount),
+                    )
+                    .accountsStrict({
+                        liquidityPool: props.poolPublicKey,
+                        mintA: props.tokenAMint,
+                        userTokenA: props.userTokenAccountA,
+                        mintB: props.tokenBMint,
+                        userTokenB: props.userTokenAccountB,
+                        lpTokenA: props.lpTokenAPda,
+                        lpTokenB: props.lpTokenBPda,
+                        lpToken: props.lpTokenMint,
+                        userLpTokenAccount: props.userTokenAccountLP,
+                        user: props.walletPublicKey,
+                        tokenProgram: TOKEN_2022_PROGRAM_ID,
+                        systemProgram: anchor.web3.SystemProgram.programId,
+                    }).instruction()
+            );
+
+            const signedTransaction = await wallet.signTransaction(transaction);
+            const signature = await provider.connection.sendRawTransaction(signedTransaction.serialize());
+
+            console.log("Transaction successful with signature:", signature);
+            console.log(`View transaction on Solscan: https://solscan.io/tx/${signature}?cluster=devent`);
+        } catch (error) {
+            console.error("Transaction failed:", error);
+        }
+
     }
 
     return (
