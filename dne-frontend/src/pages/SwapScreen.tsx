@@ -323,7 +323,7 @@ const Swap = () => {
         userTokenAccountLP?: PublicKey;
         lpTokenAPda: PublicKey;
         lpTokenBPda: PublicKey;
-        lpTokenLPPDA?: PublicKey;
+        lpTokenLPPDA: PublicKey;
     }
 
     const handlePoolAction = async (action:PoolAction) => {
@@ -351,6 +351,15 @@ const Swap = () => {
             walletPub
         );
 
+        // Get associated LP account
+        const userTokenAccountLP = await getAssociatedTokenAddress(
+            lpTokenPub,
+            walletPub,
+            false,
+            TOKEN_2022_PROGRAM_ID,
+            ASSOCIATED_PROGRAM_ID
+        );
+
         console.log("userTokenAccountA", userTokenAccountA.toBase58());
         console.log("userTokenAccountB", userTokenAccountB.toBase58());
         console.log("lpTokenAPda", lpTokenAPda.toBase58());
@@ -366,19 +375,14 @@ const Swap = () => {
             userTokenAccountB,
             lpTokenAPda,
             lpTokenBPda,
+            userTokenAccountLP
         }
 
         if (action === PoolAction.Swap) {
             await handleSwap(poolProps);
         } else if (action === PoolAction.AddLiquidity) {
             // Get the user's LP token account
-            poolProps.userTokenAccountLP = await getAssociatedTokenAddress(
-                lpTokenPub,
-                walletPub,
-                false,
-                TOKEN_2022_PROGRAM_ID,
-                ASSOCIATED_PROGRAM_ID
-            );
+
             await handleAddLiquidity(poolProps);
         } else if (action === PoolAction.RemoveLiquidity) {
             await handleRemoveLiquidity(poolProps);
@@ -428,11 +432,6 @@ const Swap = () => {
     const handleAddLiquidity = async (props:poolActionProps) => {
         console.log("Add Liquidity");
 
-        if (!props.userTokenAccountLP) {
-            console.error("User LP Token Account not found");
-            return;
-        }
-
         try {
             const transaction = new Transaction();
 
@@ -440,17 +439,21 @@ const Swap = () => {
             transaction.recentBlockhash = blockhash;
             transaction.feePayer = props.walletPublicKey;
 
-            // Create the account for the user
-            transaction.add(
-                createAssociatedTokenAccountInstruction(
-                    props.walletPublicKey,
-                    props.userTokenAccountLP,
-                    props.walletPublicKey,
-                    props.lpTokenMint,
-                    TOKEN_2022_PROGRAM_ID,
-                    ASSOCIATED_PROGRAM_ID
-                )
-            );
+            const accountExists = await connection.getAccountInfo(props.userTokenAccountLP);
+
+            if (!accountExists) {
+                // Create the account for the user
+                transaction.add(
+                    createAssociatedTokenAccountInstruction(
+                        props.walletPublicKey,
+                        props.userTokenAccountLP,
+                        props.walletPublicKey,
+                        props.lpTokenMint,
+                        TOKEN_2022_PROGRAM_ID,
+                        ASSOCIATED_PROGRAM_ID
+                    )
+                );
+            }
 
             // Add liquidity to the pool
             transaction.add(
@@ -488,17 +491,41 @@ const Swap = () => {
     const handleRemoveLiquidity = async (props:poolActionProps) => {
         console.log("Remove Liquidity");
 
-        if (!props.userTokenAccountLP) {
-            console.error("User LP Token Account not found");
-            return;
-        }
-
         try {
             const transaction = new Transaction();
 
-            const { blockhash } = await connection.getRecentBlockhash();
+            const { blockhash } = await connection.getLatestBlockhash();
             transaction.recentBlockhash = blockhash;
             transaction.feePayer = props.walletPublicKey;
+
+
+            const accountAExists = await connection.getAccountInfo(props.userTokenAccountA);
+            const accountBExists = await connection.getAccountInfo(props.userTokenAccountB);
+
+            if (!accountAExists) {
+                // Create the account for the user
+                transaction.add(
+                    createAssociatedTokenAccountInstruction(
+                        props.walletPublicKey,
+                        props.userTokenAccountLP,
+                        props.walletPublicKey,
+                        props.lpTokenMint,
+                        TOKEN_2022_PROGRAM_ID,
+                        ASSOCIATED_PROGRAM_ID
+                    )
+                );
+            } else if (!accountBExists) {
+                transaction.add(
+                    createAssociatedTokenAccountInstruction(
+                        props.walletPublicKey,
+                        props.userTokenAccountLP,
+                        props.walletPublicKey,
+                        props.lpTokenMint,
+                        TOKEN_2022_PROGRAM_ID,
+                        ASSOCIATED_PROGRAM_ID
+                    )
+                );
+            }
 
             transaction.add(
                 await program.methods
