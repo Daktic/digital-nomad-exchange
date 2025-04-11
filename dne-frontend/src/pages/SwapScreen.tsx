@@ -300,7 +300,27 @@ const Swap = () => {
         }
     }, [poolAddress, wallet, connection]);
 
-    const handleSwap = async () => {
+    enum PoolAction {
+        Swap = "swap",
+        AddLiquidity = "addLiquidity",
+        RemoveLiquidity = "removeLiquidity"
+    }
+
+    interface poolActionProps {
+        tokenAMint: PublicKey;
+        tokenBMint: PublicKey;
+        lpTokenMint: PublicKey;
+        poolPublicKey: PublicKey;
+        walletPublicKey: PublicKey;
+        userTokenAccountA?: PublicKey;
+        userTokenAccountB?: PublicKey;
+        userTokenAccountLP?: PublicKey;
+        lpTokenAPda?: PublicKey;
+        lpTokenBPda?: PublicKey;
+        lpTokenLPPDA?: PublicKey;
+    }
+
+    const handlePoolAction(action:PoolAction) {
         if (!wallet || !poolAddress || !poolMetaData) {
             console.error("Wallet or pool address is missing");
             return;
@@ -330,13 +350,41 @@ const Swap = () => {
         console.log("lpTokenAPda", lpTokenAPda.toBase58());
         console.log("lpTokenBPda", lpTokenBPda.toBase58());
 
+        const poolProps:poolActionProps = {
+            poolPublicKey: poolPub,
+            walletPublicKey: walletPub,
+            tokenAMint: mintAPub,
+            tokenBMint: mintBPub,
+            lpTokenMint: lpTokenPub,
+            userTokenAccountA,
+            userTokenAccountB,
+            lpTokenAPda,
+            lpTokenBPda,
+        }
+
+        if (action === PoolAction.Swap) {
+            handleSwap(poolProps);
+        }
+    }
+
+    const handleSwap = async (props:poolActionProps) => {
+
+        if (
+            // Needed props for function
+            !props.userTokenAccountA ||
+            !props.userTokenAccountB ||
+            !props.lpTokenAPda ||
+            !props.lpTokenBPda
+        ) {
+            return
+        }
 
         try {
             const transaction = new Transaction();
 
             const { blockhash } = await connection.getRecentBlockhash();
             transaction.recentBlockhash = blockhash;
-            transaction.feePayer = walletPub;
+            transaction.feePayer = props.walletPublicKey;
 
             transaction.add(
                 await program.methods
@@ -345,15 +393,15 @@ const Swap = () => {
                         false,
                     )
                     .accountsStrict({
-                        liquidityPool: poolPub,
-                        mintA: mintAPub,
-                        userTokenA: userTokenAccountA,
-                        mintB: mintBPub,
-                        userTokenB: userTokenAccountB,
-                        lpTokenA: lpTokenAPda,
-                        lpTokenB: lpTokenBPda,
-                        lpToken: lpTokenPub,
-                        user: walletPub,
+                        liquidityPool: props.poolPublicKey,
+                        mintA: props.tokenAMint,
+                        userTokenA: props.userTokenAccountA,
+                        mintB: props.tokenBMint,
+                        userTokenB: props.userTokenAccountB,
+                        lpTokenA: props.lpTokenAPda,
+                        lpTokenB: props.lpTokenBPda,
+                        lpToken: props.lpTokenMint,
+                        user: props.walletPublicKey,
                         tokenProgram: TOKEN_2022_PROGRAM_ID,
                         systemProgram: anchor.web3.SystemProgram.programId,
                     }).instruction()
