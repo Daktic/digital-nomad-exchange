@@ -94,7 +94,6 @@ const Pools = () => {
                 for (const lp of liquidityPools) {
                     const mintA = new PublicKey(lp.tokenA);
                     const metadataA = await getTokenMetadata(connection, mintA);
-                    console.log("Token A Metadata:", metadataA);
                     const mintB = new PublicKey(lp.tokenB);
                     const metadataB = await getTokenMetadata(connection, mintB);
                     const poolData:Pool = {
