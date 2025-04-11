@@ -320,7 +320,7 @@ const Swap = () => {
         lpTokenLPPDA?: PublicKey;
     }
 
-    const handlePoolAction(action:PoolAction) {
+    const handlePoolAction = async (action:PoolAction) => {
         if (!wallet || !poolAddress || !poolMetaData) {
             console.error("Wallet or pool address is missing");
             return;
@@ -363,7 +363,11 @@ const Swap = () => {
         }
 
         if (action === PoolAction.Swap) {
-            handleSwap(poolProps);
+            await handleSwap(poolProps);
+        } else if (action === PoolAction.AddLiquidity) {
+            await handleAddLiquidity(poolProps);
+        } else if (action === PoolAction.RemoveLiquidity) {
+            await handleRemoveLiquidity(poolProps);
         }
     }
 
@@ -417,74 +421,13 @@ const Swap = () => {
         }
     }
 
-    const handleAddLiquidity = async () => {
+    const handleAddLiquidity = async (props:poolActionProps) => {
         console.log("Add Liquidity");
-
-        if (!wallet || !poolAddress || !poolMetaData) {
-            console.error("Wallet or pool address is missing");
-            return;
-        }
-
-        const mintAPub =  new PublicKey(poolMetaData.tokenA.address);
-        const mintBPub = new PublicKey(poolMetaData.tokenB.address);
-        const lpTokenPub = new PublicKey(poolMetaData.lpToken.address);
-        const walletPub = new PublicKey(wallet.publicKey);
-        const poolPub = new PublicKey(poolAddress);
-
-        const {
-            userTokenAccountA,
-            userTokenAccountB,
-            lpTokenAPda,
-            lpTokenBPda,
-        } = await getAssociatedAddresses(
-            program,
-            mintAPub,
-            mintBPub,
-            lpTokenPub,
-            walletPub
-        );
-
-        console.log("userTokenAccountA", userTokenAccountA.toBase58());
-        console.log("userTokenAccountB", userTokenAccountB.toBase58());
-        console.log("lpTokenAPda", lpTokenAPda.toBase58());
-        console.log("lpTokenBPda", lpTokenBPda.toBase58());
-
 
     }
 
-    const handleRemoveLiquidity = async () => {
+    const handleRemoveLiquidity = async (props:poolActionProps) => {
         console.log("Remove Liquidity");
-
-
-        if (!wallet || !poolAddress || !poolMetaData) {
-            console.error("Wallet or pool address is missing");
-            return;
-        }
-
-        const mintAPub =  new PublicKey(poolMetaData.tokenA.address);
-        const mintBPub = new PublicKey(poolMetaData.tokenB.address);
-        const lpTokenPub = new PublicKey(poolMetaData.lpToken.address);
-        const walletPub = new PublicKey(wallet.publicKey);
-        const poolPub = new PublicKey(poolAddress);
-
-        const {
-            userTokenAccountA,
-            userTokenAccountB,
-            lpTokenAPda,
-            lpTokenBPda,
-        } = await getAssociatedAddresses(
-            program,
-            mintAPub,
-            mintBPub,
-            lpTokenPub,
-            walletPub
-        );
-
-        console.log("userTokenAccountA", userTokenAccountA.toBase58());
-        console.log("userTokenAccountB", userTokenAccountB.toBase58());
-        console.log("lpTokenAPda", lpTokenAPda.toBase58());
-        console.log("lpTokenBPda", lpTokenBPda.toBase58());
-
 
     }
 
@@ -518,9 +461,9 @@ const Swap = () => {
 
             }
             <ButtonBar supply={swapOrSupply}
-                       handleSwap={handleSwap}
-                       handleAddLiquidity={handleAddLiquidity}
-                       handleRemoveLiquidity={handleRemoveLiquidity}
+                       handleSwap={() => handlePoolAction(PoolAction.Swap)}
+                       handleAddLiquidity={() => handlePoolAction(PoolAction.AddLiquidity)}
+                       handleRemoveLiquidity={() => handlePoolAction(PoolAction.RemoveLiquidity)}
             />
         </div>
     )
