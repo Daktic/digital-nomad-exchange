@@ -369,6 +369,77 @@ const Swap = () => {
         }
     }
 
+    const handleAddLiquidity = async () => {
+        console.log("Add Liquidity");
+
+        if (!wallet || !poolAddress || !poolMetaData) {
+            console.error("Wallet or pool address is missing");
+            return;
+        }
+
+        const mintAPub =  new PublicKey(poolMetaData.tokenA.address);
+        const mintBPub = new PublicKey(poolMetaData.tokenB.address);
+        const lpTokenPub = new PublicKey(poolMetaData.lpToken.address);
+        const walletPub = new PublicKey(wallet.publicKey);
+        const poolPub = new PublicKey(poolAddress);
+
+        const {
+            userTokenAccountA,
+            userTokenAccountB,
+            lpTokenAPda,
+            lpTokenBPda,
+        } = await getAssociatedAddresses(
+            program,
+            mintAPub,
+            mintBPub,
+            lpTokenPub,
+            walletPub
+        );
+
+        console.log("userTokenAccountA", userTokenAccountA.toBase58());
+        console.log("userTokenAccountB", userTokenAccountB.toBase58());
+        console.log("lpTokenAPda", lpTokenAPda.toBase58());
+        console.log("lpTokenBPda", lpTokenBPda.toBase58());
+
+
+    }
+
+    const handleRemoveLiquidity = async () => {
+        console.log("Remove Liquidity");
+
+
+        if (!wallet || !poolAddress || !poolMetaData) {
+            console.error("Wallet or pool address is missing");
+            return;
+        }
+
+        const mintAPub =  new PublicKey(poolMetaData.tokenA.address);
+        const mintBPub = new PublicKey(poolMetaData.tokenB.address);
+        const lpTokenPub = new PublicKey(poolMetaData.lpToken.address);
+        const walletPub = new PublicKey(wallet.publicKey);
+        const poolPub = new PublicKey(poolAddress);
+
+        const {
+            userTokenAccountA,
+            userTokenAccountB,
+            lpTokenAPda,
+            lpTokenBPda,
+        } = await getAssociatedAddresses(
+            program,
+            mintAPub,
+            mintBPub,
+            lpTokenPub,
+            walletPub
+        );
+
+        console.log("userTokenAccountA", userTokenAccountA.toBase58());
+        console.log("userTokenAccountB", userTokenAccountB.toBase58());
+        console.log("lpTokenAPda", lpTokenAPda.toBase58());
+        console.log("lpTokenBPda", lpTokenBPda.toBase58());
+
+
+    }
+
     return (
         <div className={styles.page}>
             <SwitchBar checked={swapOrSupply} setChecked={setSwapOrSupply} />
@@ -398,7 +469,11 @@ const Swap = () => {
                 : (<div className={styles.spacer}></div>)
 
             }
-            <ButtonBar supply={swapOrSupply} handleClick={handleSwap}/>
+            <ButtonBar supply={swapOrSupply}
+                       handleSwap={handleSwap}
+                       handleAddLiquidity={handleAddLiquidity}
+                       handleRemoveLiquidity={handleRemoveLiquidity}
+            />
         </div>
     )
 };
