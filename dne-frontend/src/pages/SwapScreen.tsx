@@ -10,9 +10,15 @@ import {useAnchorWallet, useConnection} from "@solana/wallet-adapter-react";
 import idl from "../../../onchain/target/idl/digital_nomad_exchange.json";
 import type {DigitalNomadExchange} from "../../../onchain/target/types/digital_nomad_exchange.ts";
 import {Buffer} from "buffer";
-import {getAssociatedTokenAddress, getTokenMetadata, TOKEN_2022_PROGRAM_ID} from "@solana/spl-token";
+import {
+    createAssociatedTokenAccountInstruction,
+    getAssociatedTokenAddress,
+    getTokenMetadata,
+    TOKEN_2022_PROGRAM_ID
+} from "@solana/spl-token";
 import {ASSOCIATED_PROGRAM_ID} from "@coral-xyz/anchor/dist/cjs/utils/token";
 import * as anchor from "@coral-xyz/anchor";
+import {SYSTEM_PROGRAM_ID} from "@coral-xyz/anchor/dist/cjs/native/system";
 
 const fee = 0.003;
 
@@ -365,6 +371,14 @@ const Swap = () => {
         if (action === PoolAction.Swap) {
             await handleSwap(poolProps);
         } else if (action === PoolAction.AddLiquidity) {
+            // Get the user's LP token account
+            poolProps.userTokenAccountLP = await getAssociatedTokenAddress(
+                lpTokenPub,
+                walletPub,
+                false,
+                TOKEN_2022_PROGRAM_ID,
+                ASSOCIATED_PROGRAM_ID
+            );
             await handleAddLiquidity(poolProps);
         } else if (action === PoolAction.RemoveLiquidity) {
             await handleRemoveLiquidity(poolProps);
@@ -422,10 +436,23 @@ const Swap = () => {
         try {
             const transaction = new Transaction();
 
-            const { blockhash } = await connection.getRecentBlockhash();
+            const { blockhash } = await connection.getLatestBlockhash();
             transaction.recentBlockhash = blockhash;
             transaction.feePayer = props.walletPublicKey;
 
+            // Create the account for the user
+            transaction.add(
+                createAssociatedTokenAccountInstruction(
+                    props.walletPublicKey,
+                    props.userTokenAccountLP,
+                    props.walletPublicKey,
+                    props.lpTokenMint,
+                    TOKEN_2022_PROGRAM_ID,
+                    ASSOCIATED_PROGRAM_ID
+                )
+            );
+
+            // Add liquidity to the pool
             transaction.add(
                 await program.methods
                     .addLiquidity(
