@@ -24,7 +24,9 @@ interface InputAmountProps {
 
 interface ButtonBarProps {
     supply: boolean;
-    handleClick: () => void;
+    handleSwap: () => void;
+    handleAddLiquidity?: () => void;
+    handleRemoveLiquidity?: () => void;
 }
 
 
@@ -123,21 +125,34 @@ const Switch = ({checked, setChecked}: SwitchProps) => {
     )
 }
 
-export const ButtonBar = ({supply, handleClick}: ButtonBarProps) => (
-    <div className={styles.buttonBarContainer} onClick={handleClick}>
-        {supply ? <SupplyButtons /> : <SwapButton />}
+export const ButtonBar = ({supply, handleSwap, handleAddLiquidity, handleRemoveLiquidity}: ButtonBarProps) => (
+    <div className={styles.buttonBarContainer}>
+        {supply ? <SupplyButtons handleAddLiquidity={handleAddLiquidity} handleRemoveLiquidity={handleRemoveLiquidity}/> : <SwapButton handleSwap={handleSwap}/>}
     </div>
 )
 
-const SwapButton = () => (
-    <div>
+interface SwapButtonProps {
+    handleSwap: () => void;
+}
+
+const SwapButton = ({handleSwap}:SwapButtonProps) => (
+    <div onClick={handleSwap}>
         <button className={styles.swapBarButton}>Swap</button>
     </div>
 )
 
-const SupplyButtons = () => (
+interface SupplyButtonsProps {
+    handleAddLiquidity?: () => void;
+    handleRemoveLiquidity?: () => void;
+}
+
+const SupplyButtons = ({handleAddLiquidity, handleRemoveLiquidity}:SupplyButtonsProps) => (
     <div className={styles.swapBarButtonContainer}>
-        <button className={styles.swapBarButton}>Supply</button>
-        <button className={styles.swapBarButton}>Remove</button>
+        <button className={styles.swapBarButton}
+                onClick={handleAddLiquidity}
+        >Supply</button>
+        <button className={styles.swapBarButton}
+                onClick={handleRemoveLiquidity}
+        >Remove</button>
     </div>
 )
