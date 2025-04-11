@@ -312,11 +312,11 @@ const Swap = () => {
         lpTokenMint: PublicKey;
         poolPublicKey: PublicKey;
         walletPublicKey: PublicKey;
-        userTokenAccountA?: PublicKey;
-        userTokenAccountB?: PublicKey;
+        userTokenAccountA: PublicKey;
+        userTokenAccountB: PublicKey;
         userTokenAccountLP?: PublicKey;
-        lpTokenAPda?: PublicKey;
-        lpTokenBPda?: PublicKey;
+        lpTokenAPda: PublicKey;
+        lpTokenBPda: PublicKey;
         lpTokenLPPDA?: PublicKey;
     }
 
@@ -373,16 +373,6 @@ const Swap = () => {
 
     const handleSwap = async (props:poolActionProps) => {
 
-        if (
-            // Needed props for function
-            !props.userTokenAccountA ||
-            !props.userTokenAccountB ||
-            !props.lpTokenAPda ||
-            !props.lpTokenBPda
-        ) {
-            return
-        }
-
         try {
             const transaction = new Transaction();
 
@@ -424,6 +414,48 @@ const Swap = () => {
     const handleAddLiquidity = async (props:poolActionProps) => {
         console.log("Add Liquidity");
 
+        if (!props.userTokenAccountLP) {
+            console.error("User LP Token Account not found");
+            return;
+        }
+
+        try {
+            const transaction = new Transaction();
+
+            const { blockhash } = await connection.getRecentBlockhash();
+            transaction.recentBlockhash = blockhash;
+            transaction.feePayer = props.walletPublicKey;
+
+            transaction.add(
+                await program.methods
+                    .addLiquidity(
+                        new anchor.BN(tokenAAmount),
+                        new anchor.BN(tokenBAmount),
+                    )
+                    .accountsStrict({
+                        liquidityPool: props.poolPublicKey,
+                        mintA: props.tokenAMint,
+                        userTokenA: props.userTokenAccountA,
+                        mintB: props.tokenBMint,
+                        userTokenB: props.userTokenAccountB,
+                        lpTokenA: props.lpTokenAPda,
+                        lpTokenB: props.lpTokenBPda,
+                        lpToken: props.lpTokenMint,
+                        userLpTokenAccount: props.userTokenAccountLP,
+                        user: props.walletPublicKey,
+                        tokenProgram: TOKEN_2022_PROGRAM_ID,
+                        systemProgram: anchor.web3.SystemProgram.programId,
+                    }).instruction()
+            );
+
+            const signedTransaction = await wallet.signTransaction(transaction);
+            const signature = await provider.connection.sendRawTransaction(signedTransaction.serialize());
+
+            console.log("Transaction successful with signature:", signature);
+            console.log(`View transaction on Solscan: https://solscan.io/tx/${signature}?cluster=devent`);
+        } catch (error) {
+            console.error("Transaction failed:", error);
+        }
     }
 
     const handleRemoveLiquidity = async (props:poolActionProps) => {
