@@ -19,6 +19,8 @@ import {
 import {ASSOCIATED_PROGRAM_ID} from "@coral-xyz/anchor/dist/cjs/utils/token";
 import * as anchor from "@coral-xyz/anchor";
 import {SYSTEM_PROGRAM_ID} from "@coral-xyz/anchor/dist/cjs/native/system";
+import {notifyWithLink, ToastNotificaiton} from "../components/toastNotification/ToastNotificaiton.tsx";
+import {toast} from "react-toastify";
 
 const fee = 0.003;
 
@@ -421,10 +423,9 @@ const Swap = () => {
 
             const signedTransaction = await wallet.signTransaction(transaction);
             const signature = await provider.connection.sendRawTransaction(signedTransaction.serialize());
-
-            console.log("Transaction successful with signature:", signature);
-            console.log(`View transaction on Solscan: https://solscan.io/tx/${signature}?cluster=devent`);
+            notifyWithLink(signature);
         } catch (error) {
+            toast.error("Transaction failed. Please try again.");
             console.error("Transaction failed:", error);
         }
     }
@@ -480,10 +481,9 @@ const Swap = () => {
 
             const signedTransaction = await wallet.signTransaction(transaction);
             const signature = await provider.connection.sendRawTransaction(signedTransaction.serialize());
-
-            console.log("Transaction successful with signature:", signature);
-            console.log(`View transaction on Solscan: https://solscan.io/tx/${signature}?cluster=devent`);
+            notifyWithLink(signature);
         } catch (error) {
+            toast.error("Transaction failed. Please try again.");
             console.error("Transaction failed:", error);
         }
     }
@@ -550,10 +550,9 @@ const Swap = () => {
 
             const signedTransaction = await wallet.signTransaction(transaction);
             const signature = await provider.connection.sendRawTransaction(signedTransaction.serialize());
-
-            console.log("Transaction successful with signature:", signature);
-            console.log(`View transaction on Solscan: https://solscan.io/tx/${signature}?cluster=devent`);
+            notifyWithLink(signature);
         } catch (error) {
+            toast.error("Transaction failed. Please try again.");
             console.error("Transaction failed:", error);
         }
 
@@ -593,6 +592,7 @@ const Swap = () => {
                        handleAddLiquidity={() => handlePoolAction(PoolAction.AddLiquidity)}
                        handleRemoveLiquidity={() => handlePoolAction(PoolAction.RemoveLiquidity)}
             />
+            <ToastNotificaiton />
         </div>
     )
 };

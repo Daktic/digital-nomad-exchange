@@ -26,6 +26,7 @@
     "js-sha256": "^0.11.0",
     "preact": "^10.25.4",
     "react-dom": "^19.0.0",
+    "react-toastify": "^11.0.5",
     "wouter": "^3.6.0"
   },
   "devDependencies": {
