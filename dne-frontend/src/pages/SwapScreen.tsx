@@ -394,14 +394,14 @@ const Swap = () => {
         try {
             const transaction = new Transaction();
 
-            const { blockhash } = await connection.getRecentBlockhash();
+            const { blockhash } = await connection.getLatestBlockhash();
             transaction.recentBlockhash = blockhash;
             transaction.feePayer = props.walletPublicKey;
 
             transaction.add(
                 await program.methods
                     .swapTokens(
-                        new anchor.BN(tokenAAmount),
+                        new anchor.BN(tokenAAmount * 10 ** 9),
                         false,
                     )
                     .accountsStrict({
@@ -459,8 +459,8 @@ const Swap = () => {
             transaction.add(
                 await program.methods
                     .addLiquidity(
-                        new anchor.BN(tokenAAmount),
-                        new anchor.BN(tokenBAmount),
+                        new anchor.BN(tokenAAmount * 10 ** 9),
+                        new anchor.BN(tokenBAmount * 10 ** 9),
                     )
                     .accountsStrict({
                         liquidityPool: props.poolPublicKey,
@@ -530,7 +530,7 @@ const Swap = () => {
             transaction.add(
                 await program.methods
                     .removeLiquidity(
-                        new anchor.BN(lpTokenAmount),
+                        new anchor.BN(lpTokenAmount * 10 ** 9),
                     )
                     .accountsStrict({
                         liquidityPool: props.poolPublicKey,
@@ -581,7 +581,7 @@ const Swap = () => {
                         (
                             <LPTokenSection
                                 token={poolMetaData.lpToken}
-                                tokenAmount={lpTokenAmount}
+                                tokenAmount={lpTokenAmount / 10 ** 9}
                                 updateFunction={handleLPTokenInput}
                             />
                         )
