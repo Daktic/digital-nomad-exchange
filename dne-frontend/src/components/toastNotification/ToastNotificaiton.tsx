@@ -16,6 +16,7 @@ const ToastNotificaiton = () => {
 };
 
 const notifyWithLink = (transactionSignature: string) => {
+    // A special function to allow for a link to be included in the toast notification
     toast.success(
         <div>
             Transaction successful!{" "}
