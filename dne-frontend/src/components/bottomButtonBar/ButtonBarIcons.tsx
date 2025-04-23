@@ -43,10 +43,54 @@ const SwapIcon = (props: any): VNode => (
     </svg>
 )
 
+const SwapAndSupplyIcon = (props: any): VNode => (
+    <svg
+        width="70"
+        height="58"
+        viewBox="0 0 70 58"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        {...props}
+    >
+        <path
+            d="M40 38C40 49.0457 31.0457 58 20 58C8.9543 58 0 49.0457 0 38C0 26.9543 8.9543 18 20 18C31.0457 18 40 26.9543 40 38Z"
+            fill="#D9D9D9" fill-opacity="0.5"/>
+        <path
+            d="M70 38C70 49.0457 61.0457 58 50 58C38.9543 58 30 49.0457 30 38C30 26.9543 38.9543 18 50 18C61.0457 18 70 26.9543 70 38Z"
+            fill="white"/>
+        <path
+            d="M65 38C65 46.2843 58.2843 53 50 53C41.7157 53 35 46.2843 35 38C35 29.7157 41.7157 23 50 23C58.2843 23 65 29.7157 65 38Z"
+            fill="black"/>
+        <path
+            d="M55 20C55 31.0457 46.0457 40 35 40C23.9543 40 15 31.0457 15 20C15 8.95432 23.9543 1.19209e-06 35 1.19209e-06C46.0457 1.19209e-06 55 8.95432 55 20Z"
+            fill="white"/>
+        <path
+            d="M50 20C50 28.2843 43.2843 35 35 35C26.7157 35 20 28.2843 20 20C20 11.7157 26.7157 5 35 5C43.2843 5 50 11.7157 50 20Z"
+            fill="#1F1E1E" fill-opacity="0.5"/>
+    </svg>
+)
+
+const HomeIcon = (props: any): VNode => (
+    <svg
+        width="48"
+        height="48"
+        viewBox="0 0 48 48"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        {...props}
+    >
+        <path
+            d="M18 44V24H30V44M6 18L24 4L42 18V40C42 41.0609 41.5786 42.0783 40.8284 42.8284C40.0783 43.5786 39.0609 44 38 44H10C8.93913 44 7.92172 43.5786 7.17157 42.8284C6.42143 42.0783 6 41.0609 6 40V18Z"
+            stroke="#B3B3B3" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+
+)
+
 interface WalletIconProps {
     fillColor?: string;
     accentColor?: string;
 }
+
 const WalletIcon = ({
                         fillColor = "#D9D9D9",
                         accentColor = "#1F1E1E",
@@ -65,4 +109,4 @@ const WalletIcon = ({
     </svg>
 )
 
-export {PortfolioIcon, SupplyIcon, SwapIcon, WalletIcon}
+export {PortfolioIcon, SupplyIcon, SwapIcon, WalletIcon, HomeIcon, SwapAndSupplyIcon}
