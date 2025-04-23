@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import styles from "./BottomActionBar.module.css";
-import { PortfolioIcon, SupplyIcon, SwapIcon, WalletIcon } from "./ButtonBarIcons.tsx";
+import {HomeIcon, PortfolioIcon, SupplyIcon, SwapAndSupplyIcon, SwapIcon, WalletIcon} from "./ButtonBarIcons.tsx";
 import { WalletConnectionOptions } from "../walletConnection/WalletConnectionOptions.tsx";
 
 import { useState } from "react";
@@ -36,18 +36,13 @@ const BottomNavbar = () => {
         return (
             <div className={styles.navbar}>
                     <div className={styles.item}>
-                            <Link to="/portfolio">
-                                    <PortfolioIcon />
-                            </Link>
-                    </div>
-                    <div className={styles.item}>
-                            <Link to="/swap">
-                                    <SwapIcon />
+                            <Link to="/">
+                                    <HomeIcon />
                             </Link>
                     </div>
                     <div className={styles.item}>
                             <Link to="/pools">
-                                    <SupplyIcon />
+                                    <SwapAndSupplyIcon />
                             </Link>
                     </div>
                     <div className={styles.item}>
