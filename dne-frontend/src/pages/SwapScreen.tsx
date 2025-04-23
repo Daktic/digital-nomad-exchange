@@ -572,6 +572,8 @@ console.log(lpTokenAmount)
                         lpAmount={lpTokenAmount}
                         handleTokenAInput={handleTokenAInput}
                         handleTokenBInput={handleTokenBInput}
+                        reverseSwap={reverseSwap}
+                        setReverseSwap={setReverseSwap}
                     />
                 }
 
