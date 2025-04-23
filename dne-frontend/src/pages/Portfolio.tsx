@@ -50,84 +50,14 @@ export default function Portfolio() {
     const provider = new AnchorProvider(connection, wallet, { commitment: "confirmed" });
     setProvider(provider);
 
-    const program = new Program(idl as DigitalNomadExchange, provider);
 
-    // We'll store the pool accounts as an array of objects
-    const [liquidityPools, setLiquidityPools] = useState<
-        liquidtyPoolDisplay[]
-    >([]);
-
-    useEffect(() => {
-        async function fetchPools() {
-            const pools = await getLiquidityPools(connection, programID);
-
-
-            // Map each account to an object with its pubkey and raw data
-            let poolMetaPromise = pools.map(async (pool) => {
-                const accountData = pool.account.data;
-                const tokenA = new PublicKey(accountData.slice(8, 40));
-                const tokenB = new PublicKey(accountData.slice(40, 72));
-                const lpTokenA = new PublicKey(accountData.slice(72, 104));
-                const lpTokenB = new PublicKey(accountData.slice(104, 136));
-                const lpToken = new PublicKey(accountData.slice(136, 168));
-                const owner = new PublicKey(accountData.slice(168, 200));
-
-                const poolMeta: liquidtyPoolDisplay = {
-                    pool: pool.pubkey.toBase58(),
-                    tokenA: tokenA.toBase58(),
-                    tokenB: tokenB.toBase58(),
-                    lpTokenA: lpTokenA.toBase58(),
-                    lpTokenB: lpTokenB.toBase58(),
-                    lpToken: lpToken.toBase58(),
-                    owner: owner.toBase58(),
-                };
-
-                return poolMeta;
-            });
-
-            const poolMeta: liquidtyPoolDisplay[] = await Promise.all(poolMetaPromise);
-            setLiquidityPools(poolMeta);
-        }
-
-        if (connection && wallet) {
-            fetchPools();
-        }
-    }, [connection, wallet]);
-
-
-    useEffect(() => {
-        const fetchTokenMetadata = async () => {
-            try {
-                for (const lp of liquidityPools) {
-                    const mintA = new PublicKey(lp.tokenA);
-                    const metadataA = await getTokenMetadata(connection, mintA);
-                    console.log("Token A Metadata:", metadataA);
-                    const mintB = new PublicKey(lp.tokenB);
-                    const metadataB = await getTokenMetadata(connection, mintB);
-                    console.log("Token A Metadata:", metadataB);
-                }
-            } catch (error) {
-                console.error("Error fetching token metadata:", error);
-            }
-        };
-
-        fetchTokenMetadata();
-    }, [liquidityPools]);
 
     return (
         <div className={styles.page}>
-            <h1>Portfolio</h1>
-            <p>Connected? {wallet ? "Yes" : "No"}</p>
+            <h1>Digital Nomad Exchange</h1>
             <p>{wallet?.publicKey ? wallet?.publicKey.toBase58() : "No wallet connected"}</p>
 
-            {liquidityPools.map((lp, index) => (
-                <div key={index}>
-                    <p>Pool {lp.pool}</p>
-                    <p>Token A: {lp.tokenA}</p>
-                    <p>Token B: {lp.tokenB}</p>
-                    <p>LP Token: {lp.lpToken}</p>
-                </div>
-            ))}
+
         </div>
     );
 }
