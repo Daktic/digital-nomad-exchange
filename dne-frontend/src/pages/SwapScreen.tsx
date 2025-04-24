@@ -106,6 +106,7 @@ const Swap = () => {
 
     const [poolAddress, setPoolAddress] = useState(poolAddressQueryParam);
     const [swapOrSupply, setSwapOrSupply] = useState(false);
+    const [reverseSwap, setReverseSwap] = useState(false);
 
     const [poolMetaData, setPoolMetaData] = useState<Pool | null>(null);
 
@@ -192,8 +193,8 @@ const Swap = () => {
             tokenBReserve: tokenBReserve,
             lpTotalSupply: lpReserve
         })
-        setTokenAAmount(newState.tokenAAmount);
-        setTokenBAmount(newState.tokenBAmount);
+        setTokenAAmount(newState.tokenAAmount / 10 ** 9);
+        setTokenBAmount(newState.tokenBAmount / 10 ** 9);
     }
 
     async function getLiquidityPools(connection: Connection, programID: PublicKey) {
@@ -404,7 +405,7 @@ const Swap = () => {
                 await program.methods
                     .swapTokens(
                         new anchor.BN(tokenAAmount * 10 ** 9),
-                        false,
+                        reverseSwap,
                     )
                     .accountsStrict({
                         liquidityPool: props.poolPublicKey,
@@ -526,7 +527,7 @@ const Swap = () => {
                     )
                 );
             }
-
+console.log(lpTokenAmount)
             transaction.add(
                 await program.methods
                     .removeLiquidity(
@@ -571,6 +572,9 @@ const Swap = () => {
                         lpAmount={lpTokenAmount}
                         handleTokenAInput={handleTokenAInput}
                         handleTokenBInput={handleTokenBInput}
+                        supply={swapOrSupply}
+                        reverseSwap={reverseSwap}
+                        setReverseSwap={setReverseSwap}
                     />
                 }
 
@@ -580,7 +584,7 @@ const Swap = () => {
                         (
                             <LPTokenSection
                                 token={poolMetaData.lpToken}
-                                tokenAmount={lpTokenAmount / 10 ** 9}
+                                tokenAmount={lpTokenAmount}
                                 updateFunction={handleLPTokenInput}
                             />
                         )

@@ -172,3 +172,7 @@ input:checked + .slider:before {
 .lpTokenSection img {
     box-shadow: 0 0 1.2em rgba(128, 0, 128, 0.7);
 }
+
+.reversed {
+    transform: rotate(180deg);
+}

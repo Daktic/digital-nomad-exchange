@@ -21,7 +21,7 @@ const notifyWithLink = (transactionSignature: string) => {
         <div>
             Transaction successful!{" "}
             <a
-                href={`https://solscan.io/tx/${transactionSignature}?cluster=devent`}
+                href={`https://solscan.io/tx/${transactionSignature}?cluster=devnet`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{color: "#00d1b2", textDecoration: "underline"}}
