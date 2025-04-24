@@ -9,6 +9,9 @@ interface SwapBarProps {
     lpAmount: number;
     handleTokenAInput: (amount: number) => void;
     handleTokenBInput: (amount: number) => void;
+    supply?: boolean;
+    reverseSwap?: boolean;
+    setReverseSwap?: (reverseSwap: boolean) => void;
 }
 
 interface TokenAmountProps {
@@ -27,8 +30,6 @@ interface ButtonBarProps {
     handleSwap: () => void;
     handleAddLiquidity?: () => void;
     handleRemoveLiquidity?: () => void;
-    reverseSwap?: boolean;
-    setReverseSwap?: () => void;
 }
 
 
@@ -40,6 +41,7 @@ const SwapBar = ({
                      tokenBAmount,
                      handleTokenAInput,
                      handleTokenBInput,
+                     supply,
                      reverseSwap,
                      setReverseSwap
                  }: SwapBarProps) => {
@@ -55,12 +57,12 @@ const SwapBar = ({
                     tokenAmount={tokenAAmount}
                     updateFunction={handleTokenAInput}
                 ></TokenAmount>
-                <img
+                {!supply && <img
                     className={`${styles.arrow} ${reverseSwap ? styles.reversed : ""}`}
                     alt="arrow"
                     src="/arrow.svg"
                     onClick={handleSwapReverse}
-                    />
+                    />}
                 <TokenAmount
                     token={tokenB}
                     tokenAmount={tokenBAmount}
